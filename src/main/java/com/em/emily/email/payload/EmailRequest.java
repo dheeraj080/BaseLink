@@ -31,6 +31,6 @@ public class EmailRequest {
     private LocalDateTime dateTime;
 
     @NotNull
-    private ZoneId timeZone;
+    private String timeZone;
 
 }
