@@ -1,12 +1,14 @@
 package com.em.emily.email.controller;
 
 import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.quartz.JobScheduler;
 import com.em.emily.email.service.EmailService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @RestController
@@ -14,14 +16,16 @@ import java.util.List;
 public class EmailController {
 
     private final EmailService emailService;
+    private final JobScheduler jobScheduler;
 
-    public EmailController(EmailService emailService) {
+    public EmailController(EmailService emailService, JobScheduler jobScheduler) {
         this.emailService = emailService;
+        this.jobScheduler = jobScheduler;
     }
 
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@Valid @RequestBody EmailRequest request) {
-        emailService.sendEmail(request.to(), request.subject(), request.body());
+        emailService.sendEmail(request.to(), request.cc(), request.bcc(), request.replyTo(), request.subject(), request.body());
         return ResponseEntity.accepted().body("Email processing started.");
     }
 
@@ -33,5 +37,16 @@ public class EmailController {
             @RequestParam MultipartFile file) {
         emailService.sendEmailWithAttachment(to, subject, body, file);
         return ResponseEntity.accepted().body("Attachment email processing started.");
+    }
+
+    @PostMapping("/schedule")
+    public ResponseEntity<String> scheduleEmail(
+            @RequestBody EmailRequest request,
+            @RequestParam long delayInSeconds) {
+
+        ZonedDateTime dateTime = ZonedDateTime.now().plusSeconds(delayInSeconds);
+        jobScheduler.scheduleEmail(request.to(), request.subject(), request.body(), dateTime);
+
+        return ResponseEntity.accepted().body("Email scheduled for " + dateTime);
     }
 }

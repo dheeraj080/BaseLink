@@ -21,12 +21,16 @@ public class EmailService {
     }
 
     @Async("taskExecutor")
-    public void sendEmail(List<String> to, String subject, String body) {
+    public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setTo(to.toArray(new String[0])); // Multi-recipient support
+            helper.setTo(to.toArray(new String[0]));
+            if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
+            if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
+            if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+
             helper.setSubject(subject);
             helper.setText(body, true);
 

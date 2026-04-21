@@ -9,6 +9,13 @@ public record EmailRequest(
         @NotEmpty(message = "Recipient list cannot be empty")
         List<@Email(message = "Invalid email format") String> to,
 
+        List<@Email(message = "Invalid CC format") String> cc,
+
+        List<@Email(message = "Invalid BCC format") String> bcc,
+
+        @Email(message = "Invalid Reply-To format")
+        String replyTo,
+
         @NotBlank(message = "Subject cannot be empty")
         String subject,
 
