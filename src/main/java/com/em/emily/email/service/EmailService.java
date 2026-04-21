@@ -8,6 +8,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @Service
 public class EmailService {
@@ -20,33 +21,37 @@ public class EmailService {
     }
 
     @Async("taskExecutor")
-    public void sendEmail(String to, String subject, String body) {
+    public void sendEmail(List<String> to, String subject, String body) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to);
+
+            helper.setTo(to.toArray(new String[0])); // Multi-recipient support
             helper.setSubject(subject);
             helper.setText(body, true);
+
             mailSender.send(message);
             log.info("Email sent successfully to: {}", to);
         } catch (Exception e) {
-            log.error("Failed to send email to {}: {}", to, e.getMessage());
+            log.error("Failed to send email: {}", e.getMessage());
         }
     }
 
     @Async("taskExecutor")
-    public void sendEmailWithAttachment(String to, String subject, String body, MultipartFile file) {
+    public void sendEmailWithAttachment(List<String> to, String subject, String body, MultipartFile file) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to);
+
+            helper.setTo(to.toArray(new String[0]));
             helper.setSubject(subject);
             helper.setText(body, true);
             helper.addAttachment(file.getOriginalFilename(), file);
+
             mailSender.send(message);
             log.info("Email with attachment sent to: {}", to);
         } catch (Exception e) {
-            log.error("Failed to send email with attachment to {}: {}", to, e.getMessage());
+            log.error("Failed to send email with attachment: {}", e.getMessage());
         }
     }
 }
