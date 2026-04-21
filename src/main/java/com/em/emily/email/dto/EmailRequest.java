@@ -3,6 +3,7 @@ package com.em.emily.email.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import java.io.Serializable;
 import java.util.List;
 
 public record EmailRequest(
@@ -21,4 +22,8 @@ public record EmailRequest(
 
         @NotBlank(message = "Body cannot be empty")
         String body
-) {}
+) implements Serializable {
+
+        // SerialVersionUID is allowed inside the record block
+        private static final long serialVersionUID = 1L;
+}

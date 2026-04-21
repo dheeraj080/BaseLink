@@ -1,44 +1,40 @@
 package com.em.emily.email.controller;
 
+import com.em.emily.email.config.RabbitConfig;
 import com.em.emily.email.dto.EmailRequest;
-import com.em.emily.email.quartz.JobScheduler;
 import com.em.emily.email.service.EmailService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/email")
+@RequiredArgsConstructor
 public class EmailController {
 
     private final EmailService emailService;
-    private final JobScheduler jobScheduler;
+    private final RabbitTemplate rabbitTemplate;
 
-    public EmailController(EmailService emailService, JobScheduler jobScheduler) {
-        this.emailService = emailService;
-        this.jobScheduler = jobScheduler;
-    }
-
+    // Direct synchronous send
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@Valid @RequestBody EmailRequest request) {
-        emailService.sendEmail(request.to(), request.cc(), request.bcc(), request.replyTo(), request.subject(), request.body());
+        emailService.sendEmail(request.to(), request.cc(), request.bcc(),
+                request.replyTo(), request.subject(), request.body());
         return ResponseEntity.accepted().body("Email processing started.");
     }
 
-    @PostMapping(value = "/send-attachment", consumes = {"multipart/form-data"})
+    // Direct synchronous attachment send
+    @PostMapping("/send-attachment")
     public ResponseEntity<String> sendEmailWithAttachment(
             @RequestParam("to") List<String> to,
             @RequestParam("subject") String subject,
             @RequestParam("body") String body,
-            @RequestPart("file") MultipartFile file) { // Change to @RequestPart
-
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Attachment file is empty.");
-        }
+            @RequestPart("file") MultipartFile file) {
 
         emailService.sendEmailWithAttachment(to, subject, body, file);
         return ResponseEntity.accepted().body("Attachment email processing started.");
@@ -46,12 +42,16 @@ public class EmailController {
 
     @PostMapping("/schedule")
     public ResponseEntity<String> scheduleEmail(
-            @RequestBody EmailRequest request,
+            @Valid @RequestBody EmailRequest request,
             @RequestParam long delayInSeconds) {
 
-        ZonedDateTime dateTime = ZonedDateTime.now().plusSeconds(delayInSeconds);
-        jobScheduler.scheduleEmail(request.to(), request.subject(), request.body(), dateTime);
+        // Correct way to set the delay for the RabbitMQ delayed-message-exchange
+        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "email.route", request, m -> {
+            // Use setHeader with "x-delay"
+            m.getMessageProperties().setHeader("x-delay", (int) delayInSeconds * 1000);
+            return m;
+        });
 
-        return ResponseEntity.accepted().body("Email scheduled for " + dateTime);
+        return ResponseEntity.accepted().body("Email queued for " + delayInSeconds + "s delay.");
     }
 }
