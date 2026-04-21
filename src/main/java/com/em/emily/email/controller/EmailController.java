@@ -1,57 +1,111 @@
 package com.em.emily.email.controller;
 
-import com.em.emily.email.config.RabbitConfig;
 import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.model.EmailLog;
+import com.em.emily.email.quartz.EmailJob;
+import com.em.emily.email.repository.EmailRepository;
 import com.em.emily.email.service.EmailService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.quartz.*;
+import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/email")
-@RequiredArgsConstructor
 public class EmailController {
 
     private final EmailService emailService;
-    private final RabbitTemplate rabbitTemplate;
+    private final Scheduler scheduler;
+    private final EmailRepository emailRepository;
 
-    // Direct synchronous send
+    public EmailController(EmailService emailService, Scheduler scheduler, EmailRepository emailRepository) {
+        this.emailService = emailService;
+        this.scheduler = scheduler;
+        this.emailRepository = emailRepository;
+    }
+
+    @GetMapping("/status")
+    public ResponseEntity<List<Map<String, Object>>> getScheduledJobs() throws SchedulerException {
+        List<Map<String, Object>> jobDetails = new ArrayList<>();
+
+        for (String groupName : scheduler.getJobGroupNames()) {
+            for (JobKey jobKey : scheduler.getJobKeys(GroupMatcher.jobGroupEquals(groupName))) {
+                JobDetail jobDetail = scheduler.getJobDetail(jobKey);
+                List<? extends Trigger> triggers = scheduler.getTriggersOfJob(jobKey);
+
+                for (Trigger trigger : triggers) {
+                    Map<String, Object> jobInfo = new HashMap<>();
+                    jobInfo.put("jobName", jobKey.getName());
+                    jobInfo.put("nextFireTime", trigger.getNextFireTime());
+                    jobInfo.put("status", trigger.getFireTimeAfter(new Date()) != null ? "SCHEDULED" : "FINISHED");
+
+                    // Extract Data sent to the job
+                    jobInfo.put("data", jobDetail.getJobDataMap());
+
+                    jobDetails.add(jobInfo);
+                }
+            }
+        }
+        return ResponseEntity.ok(jobDetails);
+    }
+
+    @GetMapping("/logs")
+    public ResponseEntity<List<EmailLog>> getEmailLogs() {
+        return ResponseEntity.ok(emailRepository.findAll());
+    }
+
+    // 1. Immediate Send
+    // 1. Immediate Send
     @PostMapping("/send")
-    public ResponseEntity<String> sendEmail(@Valid @RequestBody EmailRequest request) {
-        emailService.sendEmail(request.to(), request.cc(), request.bcc(),
-                request.replyTo(), request.subject(), request.body());
-        return ResponseEntity.accepted().body("Email processing started.");
+    public ResponseEntity<String> sendEmail(@RequestBody EmailRequest request) {
+        // Corrected method name: sendEmail
+        // Added nulls for CC, BCC, and replyTo to match your Service signature
+        emailService.sendEmail(
+                request.to(),
+                null, // CC
+                null, // BCC
+                null, // replyTo
+                request.subject(),
+                request.body()
+        );
+        return ResponseEntity.ok("Email sent immediately.");
     }
 
-    // Direct synchronous attachment send
-    @PostMapping("/send-attachment")
-    public ResponseEntity<String> sendEmailWithAttachment(
-            @RequestParam("to") List<String> to,
-            @RequestParam("subject") String subject,
-            @RequestParam("body") String body,
-            @RequestPart("file") MultipartFile file) {
-
-        emailService.sendEmailWithAttachment(to, subject, body, file);
-        return ResponseEntity.accepted().body("Attachment email processing started.");
-    }
-
+    // 2. Scheduled Send (Quartz Way)
     @PostMapping("/schedule")
     public ResponseEntity<String> scheduleEmail(
-            @Valid @RequestBody EmailRequest request,
-            @RequestParam long delayInSeconds) {
+            @RequestBody EmailRequest request,
+            @RequestParam LocalDateTime scheduleTime) {
 
-        // Correct way to set the delay for the RabbitMQ delayed-message-exchange
-        rabbitTemplate.convertAndSend(RabbitConfig.EXCHANGE, "email.route", request, m -> {
-            // Use setHeader with "x-delay"
-            m.getMessageProperties().setHeader("x-delay", (int) delayInSeconds * 1000);
-            return m;
-        });
+        // Enforce UTC Conversion
+        ZonedDateTime zdt = ZonedDateTime.of(scheduleTime, ZoneId.systemDefault());
+        ZonedDateTime utcTime = zdt.withZoneSameInstant(ZoneOffset.UTC);
 
-        return ResponseEntity.accepted().body("Email queued for " + delayInSeconds + "s delay.");
+        // Build the Quartz Job
+        JobDetail jobDetail = JobBuilder.newJob(EmailJob.class)
+                .withIdentity("email-" + UUID.randomUUID())
+                .usingJobData("to", String.join(",", request.to())) // Adjust based on your EmailRequest implementation
+                .usingJobData("subject", request.subject())
+                .usingJobData("body", request.body())
+                .build();
+
+        // Build the Trigger
+        Trigger trigger = TriggerBuilder.newTrigger()
+                .startAt(Date.from(utcTime.toInstant()))
+                .build();
+
+        // Schedule it
+        try {
+            scheduler.scheduleJob(jobDetail, trigger);
+            return ResponseEntity.accepted().body("Email scheduled for: " + utcTime + " UTC");
+        } catch (SchedulerException e) {
+            return ResponseEntity.internalServerError().body("Scheduler failed: " + e.getMessage());
+        }
     }
 }
