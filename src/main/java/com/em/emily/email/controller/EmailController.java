@@ -31,10 +31,15 @@ public class EmailController {
 
     @PostMapping(value = "/send-attachment", consumes = {"multipart/form-data"})
     public ResponseEntity<String> sendEmailWithAttachment(
-            @RequestParam List<String> to,
-            @RequestParam String subject,
-            @RequestParam String body,
-            @RequestParam MultipartFile file) {
+            @RequestParam("to") List<String> to,
+            @RequestParam("subject") String subject,
+            @RequestParam("body") String body,
+            @RequestPart("file") MultipartFile file) { // Change to @RequestPart
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("Attachment file is empty.");
+        }
+
         emailService.sendEmailWithAttachment(to, subject, body, file);
         return ResponseEntity.accepted().body("Attachment email processing started.");
     }

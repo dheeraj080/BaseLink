@@ -18,6 +18,10 @@ public class JobScheduler {
     }
 
     public void scheduleEmail(List<String> to, String subject, String body, ZonedDateTime dateTime) {
+        if (to == null || to.isEmpty()) {
+            throw new IllegalArgumentException("Recipient list cannot be null or empty.");
+        }
+        
         try {
             String recipients = String.join(",", to);
 
