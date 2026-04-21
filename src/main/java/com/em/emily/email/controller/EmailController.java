@@ -60,8 +60,6 @@ public class EmailController {
         return ResponseEntity.ok(emailRepository.findAll());
     }
 
-    // 1. Immediate Send
-    // 1. Immediate Send
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@RequestBody EmailRequest request) {
         // Corrected method name: sendEmail
@@ -95,8 +93,10 @@ public class EmailController {
                 .usingJobData("body", request.body())
                 .build();
 
-        // Build the Trigger
+        // Build the Trigger for a single, one-time execution
         Trigger trigger = TriggerBuilder.newTrigger()
+                .withIdentity("trigger-" + UUID.randomUUID())
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()) // No repeat counts here
                 .startAt(Date.from(utcTime.toInstant()))
                 .build();
 
