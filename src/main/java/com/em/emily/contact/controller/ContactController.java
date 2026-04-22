@@ -1,5 +1,6 @@
 package com.em.emily.contact.controller;
 
+import com.em.emily.contact.dto.BulkSelectionRequest;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.service.ContactService;
 import jakarta.validation.Valid;
@@ -22,27 +23,32 @@ public class ContactController {
     private final ContactService contactService;
 
     @PostMapping
-    public ResponseEntity<Contact> create(@Valid @RequestBody Contact contact) {
+    public ResponseEntity<Contact> create(@Valid @RequestBody Contact contact,
+                                          @RequestHeader("X-User-Id") UUID userId) {
+        // FIX: Manually assign the userId from the header before saving
+        contact.setUserId(userId);
         return ResponseEntity.ok(contactService.createContact(contact));
     }
 
     @PostMapping("/bulk")
-    public ResponseEntity<List<Contact>> createMultiple(@Valid @RequestBody List<Contact> contacts) {
+    public ResponseEntity<List<Contact>> createMultiple(@Valid @RequestBody List<Contact> contacts,
+                                                        @RequestHeader("X-User-Id") UUID userId) {
+        // FIX: Ensure all contacts in the list get the userId assigned
+        contacts.forEach(contact -> contact.setUserId(userId));
         return ResponseEntity.ok(contactService.createContacts(contacts));
     }
 
     @PostMapping("/upload")
     public ResponseEntity<List<Contact>> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("userId") UUID userId) throws IOException {
+            @RequestHeader("X-User-Id") UUID userId) throws IOException { // Changed to RequestHeader
 
         return ResponseEntity.ok(contactService.uploadCsv(file, userId));
     }
 
-    @GetMapping("/export/{userId}")
-    public ResponseEntity<byte[]> exportCsv(@PathVariable UUID userId) {
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportCsv(@RequestHeader("X-User-Id") UUID userId) {
         byte[] data = contactService.exportContactsToCsv(userId);
-
         String filename = "contacts_" + userId + ".csv";
 
         return ResponseEntity.ok()
@@ -51,9 +57,9 @@ public class ContactController {
                 .body(data);
     }
 
-    @GetMapping("/user/{userId}")
+    @GetMapping
     public ResponseEntity<List<Contact>> getContacts(
-            @PathVariable UUID userId,
+            @RequestHeader("X-User-Id") UUID userId,
             @RequestParam(value = "onlySelected", defaultValue = "false") boolean onlySelected) {
 
         if (onlySelected) {
@@ -63,8 +69,32 @@ public class ContactController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Contact> update(@PathVariable UUID id, @RequestBody Contact contact) {
+    public ResponseEntity<Contact> update(@PathVariable UUID id,
+                                          @RequestBody Contact contact,
+                                          @RequestHeader("X-User-Id") UUID userId) {
+        // Ensure the updated contact belongs to the user
+        contact.setUserId(userId);
         return ResponseEntity.ok(contactService.updateContact(id, contact));
+    }
+
+    @PostMapping("/bulk-selection")
+    public ResponseEntity<Void> bulkSelect(
+            @RequestBody BulkSelectionRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+
+        // Optional: Add logic here to ensure the IDs provided belong to the requesting userId
+        contactService.bulkSelect(request.contactIds(), request.selected());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/selection")
+    public ResponseEntity<Void> toggleSelection(
+            @PathVariable UUID id,
+            @RequestParam boolean selected,
+            @RequestHeader("X-User-Id") UUID userId) {
+
+        contactService.toggleSelection(id, selected);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")

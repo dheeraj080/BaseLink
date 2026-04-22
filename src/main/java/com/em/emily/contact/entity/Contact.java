@@ -44,7 +44,8 @@ public class Contact {
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    private Selected sendTo = Selected.NO ;
+    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'NO'") // ADD THIS
+    private Selected sendTo = Selected.NO;
 
 
     // create and update at

@@ -1,12 +1,18 @@
 package com.em.emily.email.controller;
 
+import com.em.emily.contact.dto.EmailMessage;
+import com.em.emily.contact.entity.Contact;
+import com.em.emily.contact.service.ContactService;
+import com.em.emily.email.config.RabbitConfig;
 import com.em.emily.email.dto.EmailRequest;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.quartz.EmailJob;
 import com.em.emily.email.repository.EmailRepository;
 import com.em.emily.email.service.EmailService;
+import lombok.RequiredArgsConstructor;
 import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,36 +24,28 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/email")
+@RequiredArgsConstructor // Automatically generates the constructor
 public class EmailController {
 
     private final EmailService emailService;
     private final Scheduler scheduler;
     private final EmailRepository emailRepository;
-
-    public EmailController(EmailService emailService, Scheduler scheduler, EmailRepository emailRepository) {
-        this.emailService = emailService;
-        this.scheduler = scheduler;
-        this.emailRepository = emailRepository;
-    }
+    private final ContactService contactService;
+    private final RabbitTemplate rabbitTemplate;
 
     @GetMapping("/status")
     public ResponseEntity<List<Map<String, Object>>> getScheduledJobs() throws SchedulerException {
         List<Map<String, Object>> jobDetails = new ArrayList<>();
-
         for (String groupName : scheduler.getJobGroupNames()) {
             for (JobKey jobKey : scheduler.getJobKeys(GroupMatcher.jobGroupEquals(groupName))) {
                 JobDetail jobDetail = scheduler.getJobDetail(jobKey);
                 List<? extends Trigger> triggers = scheduler.getTriggersOfJob(jobKey);
-
                 for (Trigger trigger : triggers) {
                     Map<String, Object> jobInfo = new HashMap<>();
                     jobInfo.put("jobName", jobKey.getName());
                     jobInfo.put("nextFireTime", trigger.getNextFireTime());
                     jobInfo.put("status", trigger.getFireTimeAfter(new Date()) != null ? "SCHEDULED" : "FINISHED");
-
-                    // Extract Data sent to the job
                     jobInfo.put("data", jobDetail.getJobDataMap());
-
                     jobDetails.add(jobInfo);
                 }
             }
@@ -62,53 +60,74 @@ public class EmailController {
 
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@RequestBody EmailRequest request) {
-        // Corrected method name: sendEmail
-        // Added nulls for CC, BCC, and replyTo to match your Service signature
         emailService.sendEmail(
                 request.to(),
-                null, // CC
-                null, // BCC
-                null, // replyTo
+                request.cc(),
+                request.bcc(),
+                null, // ReplyTo
                 request.subject(),
                 request.body()
         );
         return ResponseEntity.ok("Email sent immediately.");
     }
 
-    // 2. Scheduled Send (Quartz Way)
     @PostMapping("/schedule")
     public ResponseEntity<String> scheduleEmail(
             @RequestBody EmailRequest request,
             @RequestParam LocalDateTime scheduleTime) {
 
-        // Enforce UTC Conversion
-        ZonedDateTime zdt = ZonedDateTime.of(scheduleTime, ZoneId.systemDefault());
-        ZonedDateTime utcTime = zdt.withZoneSameInstant(ZoneOffset.UTC);
+        ZonedDateTime utcTime = ZonedDateTime.of(scheduleTime, ZoneId.systemDefault()).withZoneSameInstant(ZoneOffset.UTC);
 
-        // Build the Quartz Job
         JobDetail jobDetail = JobBuilder.newJob(EmailJob.class)
                 .withIdentity("email-" + UUID.randomUUID())
-                .usingJobData("to", String.join(",", request.to())) // Adjust based on your EmailRequest implementation
+                .usingJobData("to", String.join(",", request.to()))
                 .usingJobData("subject", request.subject())
                 .usingJobData("body", request.body())
                 .build();
 
-        // Build the Trigger
-        // Example: Tell Quartz to retry the job if it fails
         Trigger trigger = TriggerBuilder.newTrigger()
                 .withIdentity("trigger-" + UUID.randomUUID())
-                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInMinutes(5) // Retry every 5 minutes
-                        .withRepeatCount(3))      // Try 3 times
                 .startAt(Date.from(utcTime.toInstant()))
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withMisfireHandlingInstructionFireNow())
                 .build();
 
-        // Schedule it
         try {
             scheduler.scheduleJob(jobDetail, trigger);
             return ResponseEntity.accepted().body("Email scheduled for: " + utcTime + " UTC");
         } catch (SchedulerException e) {
             return ResponseEntity.internalServerError().body("Scheduler failed: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<String> broadcastToSelected(
+            @RequestBody EmailRequest request,
+            @RequestHeader("X-User-Id") UUID userId) {
+
+        List<Contact> selectedContacts = contactService.getSelectedContacts(userId);
+
+        if (selectedContacts.isEmpty()) {
+            return ResponseEntity.badRequest().body("No contacts selected for this user.");
+        }
+
+        for (Contact contact : selectedContacts) {
+            // FIX: Pass null for cc/bcc as broadcasts usually don't involve them
+            EmailMessage message = new EmailMessage(
+                    List.of(contact.getEmail()),
+                    null,
+                    null,
+                    request.subject(),
+                    request.body()
+            );
+
+            rabbitTemplate.convertAndSend(
+                    RabbitConfig.EXCHANGE,
+                    RabbitConfig.ROUTING_KEY,
+                    message
+            );
+        }
+
+        return ResponseEntity.accepted().body("Broadcasting to " + selectedContacts.size() + " contacts.");
     }
 }

@@ -3,9 +3,12 @@ package com.em.emily.email.service;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.model.EmailStatus;
 import com.em.emily.email.repository.EmailRepository;
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -16,49 +19,58 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private final JavaMailSender mailSender;
     private final EmailRepository emailRepository;
 
-    public EmailService(JavaMailSender mailSender, EmailRepository emailRepository) {
-        this.mailSender = mailSender;
-        this.emailRepository = emailRepository;
-    }
-
     @Async("taskExecutor")
     public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body) {
+        // 1. Validation
+        if (to == null || to.isEmpty()) {
+            log.error("Cannot send email: Recipient list is empty.");
+            return;
+        }
+
         EmailLog logEntry = new EmailLog();
         logEntry.setRecipient(String.join(",", to));
         logEntry.setSubject(subject);
+        logEntry.setStatus(EmailStatus.PENDING);
         logEntry = emailRepository.save(logEntry);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to.toArray(new String[0]));
-            if (cc != null) helper.setCc(cc.toArray(new String[0]));
-            if (bcc != null) helper.setBcc(bcc.toArray(new String[0]));
-            if (replyTo != null) helper.setReplyTo(replyTo);
 
+            helper.setTo(to.toArray(new String[0]));
             helper.setSubject(subject);
-            helper.setText(body, true);
+            helper.setText(body, true); // true = HTML enabled
+
+            if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
+            if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
+            if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+
             mailSender.send(message);
 
             logEntry.setStatus(EmailStatus.SENT);
             logEntry.setSentAt(LocalDateTime.now());
-        } catch (Exception e) {
+            log.info("Email sent successfully to: {}", to);
+
+        } catch (MessagingException | MailException e) {
             logEntry.setStatus(EmailStatus.FAILED);
             logEntry.setErrorMessage(e.getMessage());
-            log.error("Email failed: {}", e.getMessage());
+            log.error("Email failed for recipient {}: {}", to, e.getMessage());
         }
+
         emailRepository.save(logEntry);
     }
 
     @Async("taskExecutor")
     public void sendEmailWithAttachment(List<String> to, String subject, String body, MultipartFile file) {
-        // 1. Create and Save "PENDING" log
+        if (to == null || to.isEmpty()) return;
+
         EmailLog logEntry = new EmailLog();
         logEntry.setRecipient(String.join(",", to));
         logEntry.setSubject(subject + " [Attachment: " + file.getOriginalFilename() + "]");
@@ -73,16 +85,15 @@ public class EmailService {
             helper.setSubject(subject);
             helper.setText(body, true);
 
-            // MultipartFile implements InputStreamSource, so it can be passed directly
-            helper.addAttachment(file.getOriginalFilename(), file);
+            if (file != null && !file.isEmpty()) {
+                helper.addAttachment(file.getOriginalFilename(), file);
+            }
 
             mailSender.send(message);
 
-            // 2. Update to "SENT"
             logEntry.setStatus(EmailStatus.SENT);
             logEntry.setSentAt(LocalDateTime.now());
-        } catch (Exception e) {
-            // 3. Update to "FAILED"
+        } catch (MessagingException | MailException e) {
             logEntry.setStatus(EmailStatus.FAILED);
             logEntry.setErrorMessage(e.getMessage());
             log.error("Email with attachment failed: {}", e.getMessage());
