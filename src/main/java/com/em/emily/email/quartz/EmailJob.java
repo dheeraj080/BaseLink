@@ -21,13 +21,17 @@ public class EmailJob extends QuartzJobBean {
     protected void executeInternal(JobExecutionContext context) {
         JobDataMap dataMap = context.getMergedJobDataMap();
 
-        // 1. Prepare data
-        List<String> to = List.of(dataMap.getString("to").split(","));
+        // Defensive programming: Use getOrDefault or check for nulls
+        String toRaw = dataMap.getString("to");
+        if (toRaw == null || toRaw.isEmpty()) {
+            // Log a warning or throw a JobExecutionException to let Quartz handle retries
+            throw new RuntimeException("Job failed: Recipient list is empty.");
+        }
+
+        List<String> to = List.of(toRaw.split(","));
         String subject = dataMap.getString("subject");
         String body = dataMap.getString("body");
 
-        // 2. Call the correct method with all 6 parameters
-        // We pass 'null' for CC, BCC, and ReplyTo as they aren't in the job data
         emailService.sendEmail(to, null, null, null, subject, body);
     }
 }

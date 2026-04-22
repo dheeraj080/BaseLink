@@ -60,8 +60,6 @@ public class EmailController {
         return ResponseEntity.ok(emailRepository.findAll());
     }
 
-    // 1. Immediate Send
-    // 1. Immediate Send
     @PostMapping("/send")
     public ResponseEntity<String> sendEmail(@RequestBody EmailRequest request) {
         // Corrected method name: sendEmail
@@ -96,7 +94,12 @@ public class EmailController {
                 .build();
 
         // Build the Trigger
+        // Example: Tell Quartz to retry the job if it fails
         Trigger trigger = TriggerBuilder.newTrigger()
+                .withIdentity("trigger-" + UUID.randomUUID())
+                .withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInMinutes(5) // Retry every 5 minutes
+                        .withRepeatCount(3))      // Try 3 times
                 .startAt(Date.from(utcTime.toInstant()))
                 .build();
 
