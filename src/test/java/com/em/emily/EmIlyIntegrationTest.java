@@ -3,7 +3,7 @@ package com.em.emily;
 import com.em.emily.auth.UserPrincipal;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.repository.ContactRepository;
-import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.EmailRequest;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.repository.EmailRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
