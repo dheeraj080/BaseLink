@@ -1,5 +1,6 @@
 package com.em.emily;
 
+import com.em.emily.auth.UserPrincipal;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.repository.ContactRepository;
 import com.em.emily.email.dto.EmailRequest;
@@ -19,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.http.MediaType;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -33,11 +35,21 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "security.jwt.secret=9a67473d4644440a76be0488f7832811293290626b382d6b380302d9600e12345",
+        "security.jwt.access-ttl-seconds=3600",
+        "security.jwt.refresh-ttl-seconds=2592000",
+        "security.jwt.issuer=emily-auth-test",
+        "spring.security.oauth2.client.registration.google.client-id=mock-id",
+        "spring.security.oauth2.client.registration.google.client-secret=mock-secret",
+        "spring.mail.properties.mail.smtp.from=no-reply@emily.com"
+})
 @ActiveProfiles("test")
+@WithMockUser // This will provide a default mock user
 public class EmIlyIntegrationTest {
 
     private MockMvc mockMvc;
@@ -65,13 +77,6 @@ public class EmIlyIntegrationTest {
         public ConnectionFactory connectionFactory() {
             return Mockito.mock(ConnectionFactory.class);
         }
-
-        @Bean
-        public ObjectMapper objectMapper() {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.findAndRegisterModules();
-            return mapper;
-        }
     }
 
     @RegisterExtension
@@ -93,8 +98,10 @@ public class EmIlyIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-        testUserId = UUID.randomUUID();
+        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
+                .apply(springSecurity())
+                .build();
+        testUserId = UUID.fromString("00000000-0000-0000-0000-000000000000");
         contactRepository.deleteAll();
         emailRepository.deleteAll();
     }
@@ -106,10 +113,13 @@ public class EmIlyIntegrationTest {
                 .email("alice@example.com")
                 .build();
 
+        UserPrincipal principal = new UserPrincipal(testUserId, "test@example.com");
+
         mockMvc.perform(post("/api/v1/contacts")
-                        .header("X-User-Id", testUserId)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(contact)))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
         assertThat(contactRepository.count()).isEqualTo(1);
@@ -124,8 +134,10 @@ public class EmIlyIntegrationTest {
         );
 
         mockMvc.perform(post("/api/v1/email/send")
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(emailRequest)))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
         assertThat(greenMail.waitForIncomingEmail(5000, 1)).isTrue();
@@ -146,14 +158,18 @@ public class EmIlyIntegrationTest {
         Contact c1 = Contact.builder().name("User 1").email("u1@test.com").userId(testUserId).build();
         contactRepository.save(c1);
 
+        UserPrincipal principal = new UserPrincipal(testUserId, "test@example.com");
+
         mockMvc.perform(patch("/api/v1/contacts/" + c1.getId() + "/selection")
-                        .header("X-User-Id", testUserId)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal))
                         .param("selected", "true"))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/contacts")
-                        .header("X-User-Id", testUserId)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user(principal))
                         .param("onlySelected", "true"))
+                .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
     }

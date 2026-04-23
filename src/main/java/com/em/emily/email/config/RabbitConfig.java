@@ -12,6 +12,8 @@ public class RabbitConfig {
     public static final String EXCHANGE = "email.exchange";
     public static final String QUEUE = "email.queue";
     public static final String ROUTING_KEY = "email.route";
+    public static final String TRANSACTIONAL_QUEUE = "email.transactional.queue";
+    public static final String TRANSACTIONAL_ROUTING_KEY = "email.transactional.route";
 
     @Bean
     public MessageConverter jsonMessageConverter() {
@@ -30,7 +32,17 @@ public class RabbitConfig {
     }
 
     @Bean
+    public Queue transactionalQueue() {
+        return new Queue(TRANSACTIONAL_QUEUE);
+    }
+
+    @Bean
     public Binding binding(Queue queue, DirectExchange exchange) {
         return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding transactionalBinding(Queue transactionalQueue, DirectExchange exchange) {
+        return BindingBuilder.bind(transactionalQueue).to(exchange).with(TRANSACTIONAL_ROUTING_KEY);
     }
 }

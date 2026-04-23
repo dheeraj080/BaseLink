@@ -27,7 +27,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
+        "security.jwt.secret=9a67473d4644440a76be0488f7832811293290626b382d6b380302d9600e12345",
+        "security.jwt.access-ttl-seconds=3600",
+        "security.jwt.refresh-ttl-seconds=2592000",
+        "security.jwt.issuer=emily-auth-test",
+        "spring.security.oauth2.client.registration.google.client-id=mock-id",
+        "spring.security.oauth2.client.registration.google.client-secret=mock-secret",
+        "spring.mail.properties.mail.smtp.from=no-reply@emily.com"
+})
 @ActiveProfiles("test")
 public class MessagingFlowTest {
 

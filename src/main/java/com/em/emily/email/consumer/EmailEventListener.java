@@ -15,7 +15,7 @@ public class EmailEventListener {
 
     private final EmailService emailService;
 
-    @RabbitListener(queues = RabbitConfig.QUEUE)
+    @RabbitListener(queues = {RabbitConfig.QUEUE, RabbitConfig.TRANSACTIONAL_QUEUE})
     public void handleEmailEvent(EmailRequest request) {
         log.info("Received scheduled email request for: {}", request.to());
         try {

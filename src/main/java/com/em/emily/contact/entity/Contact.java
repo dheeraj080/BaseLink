@@ -43,9 +43,8 @@ public class Contact {
     private UUID userId;
 
     @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "VARCHAR(255) DEFAULT 'NO'") // ADD THIS
-    private Selected sendTo = Selected.NO;
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private boolean selected = false;
 
 
     // create and update at
