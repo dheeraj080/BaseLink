@@ -2,7 +2,7 @@ package com.em.emily.auth.service.impl;
 
 import com.em.emily.auth.service.EmailService;
 import com.em.emily.email.config.RabbitConfig;
-import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.EmailRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

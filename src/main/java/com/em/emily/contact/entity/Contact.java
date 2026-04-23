@@ -46,6 +46,15 @@ public class Contact {
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean selected = false;
 
+    @ManyToMany
+    @JoinTable(
+            name = "contact_group_members",
+            joinColumns = @JoinColumn(name = "contact_id"),
+            inverseJoinColumns = @JoinColumn(name = "group_id")
+    )
+    @Builder.Default
+    private java.util.Set<ContactGroup> groups = new java.util.HashSet<>();
+
 
     // create and update at
 
