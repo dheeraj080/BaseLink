@@ -1,7 +1,6 @@
 package com.em.emily.contact.service;
 
 import com.em.emily.contact.entity.Contact;
-import com.em.emily.contact.entity.Selected;
 import com.em.emily.contact.repository.ContactRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +40,7 @@ class ContactServiceTest {
                 .name("John Doe")
                 .email("john@example.com")
                 .userId(userId)
-                .sendTo(Selected.NO)
+                .selected(false)
                 .build();
     }
 
@@ -99,7 +98,7 @@ class ContactServiceTest {
 
         contactService.toggleSelection(contactId, true);
 
-        assertEquals(Selected.YES, contact.getSendTo());
+        assertTrue(contact.isSelected());
         verify(contactRepository).save(contact);
     }
 

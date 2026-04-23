@@ -1,5 +1,6 @@
 package com.em.emily.contact.controller;
 
+import com.em.emily.auth.UserPrincipal;
 import com.em.emily.contact.dto.BulkSelectionRequest;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.service.ContactService;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -24,32 +26,32 @@ public class ContactController {
 
     @PostMapping
     public ResponseEntity<Contact> create(@Valid @RequestBody Contact contact,
-                                          @RequestHeader("X-User-Id") UUID userId) {
-        // FIX: Manually assign the userId from the header before saving
-        contact.setUserId(userId);
+                                          @AuthenticationPrincipal UserPrincipal principal) {
+        // FIX: Manually assign the userId from the principal before saving
+        contact.setUserId(principal.id());
         return ResponseEntity.ok(contactService.createContact(contact));
     }
 
     @PostMapping("/bulk")
     public ResponseEntity<List<Contact>> createMultiple(@Valid @RequestBody List<Contact> contacts,
-                                                        @RequestHeader("X-User-Id") UUID userId) {
+                                                        @AuthenticationPrincipal UserPrincipal principal) {
         // FIX: Ensure all contacts in the list get the userId assigned
-        contacts.forEach(contact -> contact.setUserId(userId));
+        contacts.forEach(contact -> contact.setUserId(principal.id()));
         return ResponseEntity.ok(contactService.createContacts(contacts));
     }
 
     @PostMapping("/upload")
     public ResponseEntity<List<Contact>> uploadFile(
             @RequestParam("file") MultipartFile file,
-            @RequestHeader("X-User-Id") UUID userId) throws IOException { // Changed to RequestHeader
+            @AuthenticationPrincipal UserPrincipal principal) throws IOException {
 
-        return ResponseEntity.ok(contactService.uploadCsv(file, userId));
+        return ResponseEntity.ok(contactService.uploadCsv(file, principal.id()));
     }
 
     @GetMapping("/export")
-    public ResponseEntity<byte[]> exportCsv(@RequestHeader("X-User-Id") UUID userId) {
-        byte[] data = contactService.exportContactsToCsv(userId);
-        String filename = "contacts_" + userId + ".csv";
+    public ResponseEntity<byte[]> exportCsv(@AuthenticationPrincipal UserPrincipal principal) {
+        byte[] data = contactService.exportContactsToCsv(principal.id());
+        String filename = "contacts_" + principal.id() + ".csv";
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
@@ -59,28 +61,28 @@ public class ContactController {
 
     @GetMapping
     public ResponseEntity<List<Contact>> getContacts(
-            @RequestHeader("X-User-Id") UUID userId,
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(value = "onlySelected", defaultValue = "false") boolean onlySelected) {
 
         if (onlySelected) {
-            return ResponseEntity.ok(contactService.getSelectedContacts(userId));
+            return ResponseEntity.ok(contactService.getSelectedContacts(principal.id()));
         }
-        return ResponseEntity.ok(contactService.getAllUserContacts(userId));
+        return ResponseEntity.ok(contactService.getAllUserContacts(principal.id()));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Contact> update(@PathVariable UUID id,
                                           @RequestBody Contact contact,
-                                          @RequestHeader("X-User-Id") UUID userId) {
+                                          @AuthenticationPrincipal UserPrincipal principal) {
         // Ensure the updated contact belongs to the user
-        contact.setUserId(userId);
+        contact.setUserId(principal.id());
         return ResponseEntity.ok(contactService.updateContact(id, contact));
     }
 
     @PostMapping("/bulk-selection")
     public ResponseEntity<Void> bulkSelect(
             @RequestBody BulkSelectionRequest request,
-            @RequestHeader("X-User-Id") UUID userId) {
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         // Optional: Add logic here to ensure the IDs provided belong to the requesting userId
         contactService.bulkSelect(request.contactIds(), request.selected());
@@ -91,7 +93,7 @@ public class ContactController {
     public ResponseEntity<Void> toggleSelection(
             @PathVariable UUID id,
             @RequestParam boolean selected,
-            @RequestHeader("X-User-Id") UUID userId) {
+            @AuthenticationPrincipal UserPrincipal principal) {
 
         contactService.toggleSelection(id, selected);
         return ResponseEntity.noContent().build();

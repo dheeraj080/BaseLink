@@ -28,7 +28,15 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, properties = {
+        "security.jwt.secret=vS9p8u2M5rX7n4Q1z6W0E3t9Y4A8S5D2F1G7H3J6K9L0P3M1N4B7V2C5X8Z1Q9W0",
+        "security.jwt.access-ttl-seconds=3600",
+        "security.jwt.refresh-ttl-seconds=2592000",
+        "security.jwt.issuer=emily-auth-test",
+        "spring.security.oauth2.client.registration.google.client-id=mock-id",
+        "spring.security.oauth2.client.registration.google.client-secret=mock-secret",
+        "spring.mail.properties.mail.smtp.from=no-reply@emily.com"
+})
 @ActiveProfiles("test")
 @RabbitListenerTest(spy = true)
 public class MessagingHarnessTest {
