@@ -1,7 +1,6 @@
 package com.em.emily.contact.service;
 
 import com.em.emily.contact.entity.Contact;
-import com.em.emily.contact.entity.Selected;
 import com.em.emily.contact.repository.ContactRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +60,7 @@ public class ContactService {
                         .phoneNo(csvRecord.isMapped("Phone") ? csvRecord.get("Phone") : null)
                         .description(csvRecord.isMapped("Description") ? csvRecord.get("Description") : null)
                         .userId(userId)
-                        .sendTo(Selected.NO)
+                        .selected(false)
                         .build();
                 contacts.add(contact);
             }
@@ -99,7 +98,7 @@ public class ContactService {
         Contact contact = contactRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
 
-        contact.setSendTo(selected ? Selected.YES : Selected.NO);
+        contact.setSelected(selected);
         contactRepository.save(contact);
     }
 
@@ -108,7 +107,7 @@ public class ContactService {
     }
 
     public List<Contact> getSelectedContacts(UUID userId) {
-        return contactRepository.findByUserIdAndSendTo(userId, Selected.YES);
+        return contactRepository.findByUserIdAndSelected(userId, true);
     }
 
     public Contact updateContact(UUID id, Contact details) {
@@ -125,8 +124,7 @@ public class ContactService {
 
     @Transactional
     public void bulkSelect(List<UUID> ids, boolean selected) {
-        Selected status = selected ? Selected.YES : Selected.NO;
-        contactRepository.updateBulkSelection(ids, status);
+        contactRepository.updateBulkSelection(ids, selected);
     }
 
     public void deleteContact(UUID id) {

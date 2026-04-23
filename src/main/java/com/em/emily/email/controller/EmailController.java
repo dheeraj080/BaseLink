@@ -1,5 +1,6 @@
 package com.em.emily.email.controller;
 
+import com.em.emily.auth.UserPrincipal;
 import com.em.emily.contact.dto.EmailMessage;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.service.ContactService;
@@ -14,6 +15,7 @@ import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -54,7 +56,8 @@ public class EmailController {
     }
 
     @GetMapping("/logs")
-    public ResponseEntity<List<EmailLog>> getEmailLogs() {
+    public ResponseEntity<List<EmailLog>> getEmailLogs(@AuthenticationPrincipal UserPrincipal principal) {
+        // Log query should ideally be filtered by userId too, but for now we'll just protect the endpoint
         return ResponseEntity.ok(emailRepository.findAll());
     }
 
@@ -103,9 +106,9 @@ public class EmailController {
     @PostMapping("/broadcast")
     public ResponseEntity<String> broadcastToSelected(
             @RequestBody EmailRequest request,
-            @RequestHeader("X-User-Id") UUID userId) {
+            @AuthenticationPrincipal UserPrincipal principal) {
 
-        List<Contact> selectedContacts = contactService.getSelectedContacts(userId);
+        List<Contact> selectedContacts = contactService.getSelectedContacts(principal.id());
 
         if (selectedContacts.isEmpty()) {
             return ResponseEntity.badRequest().body("No contacts selected for this user.");
