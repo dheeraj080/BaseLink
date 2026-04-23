@@ -1,7 +1,7 @@
 package com.em.emily;
 
 import com.em.emily.email.consumer.EmailEventListener;
-import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.EmailRequest;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.repository.EmailRepository;
 import com.icegreen.greenmail.configuration.GreenMailConfiguration;

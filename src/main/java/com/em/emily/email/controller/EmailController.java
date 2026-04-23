@@ -1,11 +1,8 @@
 package com.em.emily.email.controller;
 
-import com.em.emily.auth.UserPrincipal;
-import com.em.emily.contact.dto.EmailMessage;
-import com.em.emily.contact.entity.Contact;
-import com.em.emily.contact.service.ContactService;
+
 import com.em.emily.email.config.RabbitConfig;
-import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.EmailRequest;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.quartz.EmailJob;
 import com.em.emily.email.repository.EmailRepository;
@@ -15,7 +12,6 @@ import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -32,7 +28,7 @@ public class EmailController {
     private final EmailService emailService;
     private final Scheduler scheduler;
     private final EmailRepository emailRepository;
-    private final ContactService contactService;
+
     private final RabbitTemplate rabbitTemplate;
 
     @GetMapping("/status")
@@ -56,7 +52,7 @@ public class EmailController {
     }
 
     @GetMapping("/logs")
-    public ResponseEntity<List<EmailLog>> getEmailLogs(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<List<EmailLog>> getEmailLogs() {
         // Log query should ideally be filtered by userId too, but for now we'll just protect the endpoint
         return ResponseEntity.ok(emailRepository.findAll());
     }
@@ -103,34 +99,5 @@ public class EmailController {
         }
     }
 
-    @PostMapping("/broadcast")
-    public ResponseEntity<String> broadcastToSelected(
-            @RequestBody EmailRequest request,
-            @AuthenticationPrincipal UserPrincipal principal) {
 
-        List<Contact> selectedContacts = contactService.getSelectedContacts(principal.id());
-
-        if (selectedContacts.isEmpty()) {
-            return ResponseEntity.badRequest().body("No contacts selected for this user.");
-        }
-
-        for (Contact contact : selectedContacts) {
-            // FIX: Pass null for cc/bcc as broadcasts usually don't involve them
-            EmailMessage message = new EmailMessage(
-                    List.of(contact.getEmail()),
-                    null,
-                    null,
-                    request.subject(),
-                    request.body()
-            );
-
-            rabbitTemplate.convertAndSend(
-                    RabbitConfig.EXCHANGE,
-                    RabbitConfig.ROUTING_KEY,
-                    message
-            );
-        }
-
-        return ResponseEntity.accepted().body("Broadcasting to " + selectedContacts.size() + " contacts.");
-    }
 }

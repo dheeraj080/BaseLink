@@ -15,9 +15,18 @@ public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private UserIdArgumentResolver userIdResolver;
 
+    @Autowired
+    private com.em.emily.config.RateLimitInterceptor rateLimitInterceptor;
+
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(userIdResolver);
+    }
+
+    @Override
+    public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+        registry.addInterceptor(rateLimitInterceptor)
+                .addPathPatterns("/api/v1/auth/**", "/api/v1/email/**");
     }
 
     @Override

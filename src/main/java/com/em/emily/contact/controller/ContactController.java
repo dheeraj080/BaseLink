@@ -23,6 +23,7 @@ import java.util.UUID;
 public class ContactController {
 
     private final ContactService contactService;
+    private final org.springframework.amqp.rabbit.core.RabbitTemplate rabbitTemplate;
 
     @PostMapping
     public ResponseEntity<Contact> create(@Valid @RequestBody Contact contact,
@@ -97,6 +98,37 @@ public class ContactController {
 
         contactService.toggleSelection(id, selected);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/broadcast")
+    public ResponseEntity<String> broadcastToSelected(
+            @RequestBody com.em.emily.email.EmailRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        List<Contact> selectedContacts = contactService.getSelectedContacts(principal.id());
+
+        if (selectedContacts.isEmpty()) {
+            return ResponseEntity.badRequest().body("No contacts selected for this user.");
+        }
+
+        for (Contact contact : selectedContacts) {
+            com.em.emily.email.EmailRequest message = new com.em.emily.email.EmailRequest(
+                    List.of(contact.getEmail()),
+                    null,
+                    null,
+                    null,
+                    request.subject(),
+                    request.body()
+            );
+
+            rabbitTemplate.convertAndSend(
+                    com.em.emily.email.config.RabbitConfig.EXCHANGE,
+                    com.em.emily.email.config.RabbitConfig.ROUTING_KEY,
+                    message
+            );
+        }
+
+        return ResponseEntity.accepted().body("Broadcasting to " + selectedContacts.size() + " contacts.");
     }
 
     @DeleteMapping("/{id}")

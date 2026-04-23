@@ -1,4 +1,4 @@
-package com.em.emily.email.dto;
+package com.em.emily.email;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

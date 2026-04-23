@@ -1,7 +1,7 @@
 package com.em.emily.email.consumer;
 
 import com.em.emily.email.config.RabbitConfig;
-import com.em.emily.email.dto.EmailRequest;
+import com.em.emily.email.EmailRequest;
 import com.em.emily.email.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
