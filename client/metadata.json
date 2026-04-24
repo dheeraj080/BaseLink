@@ -1,5 +1,0 @@
-{
-  "name": "BaseLink",
-  "description": "A high-performance, minimalist email-sending platform blueprint featuring a React frontend and Spring Boot backend architecture.",
-  "requestFramePermissions": []
-}

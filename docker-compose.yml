@@ -1,8 +1,0 @@
-services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbitmq_delayed_message_exchange set_env RABBITMQ_PLUGINS rabbitmq_delayed_message_exchange"
-    ports:
-      - "5672:5672"
-      - "15672:15672"
