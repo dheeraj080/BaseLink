@@ -140,7 +140,23 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user, refreshTokenOb.getJti());
         cookieService.attachRefreshCookie(response, refreshToken, (int) jwtService.getRefreshTtlSeconds());
-        response.getWriter().write("Login successful");
+        
+        // Return HTML to post message to frontend popup opener
+        response.setContentType("text/html");
+        
+        // Manual JSON construction to avoid adding Jackson ObjectMapper to constructor if not already there
+        String userJson = String.format("{\"id\":\"%s\",\"email\":\"%s\",\"name\":\"%s\",\"image\":\"%s\"}",
+            user.getId(), user.getEmail(), user.getName() != null ? user.getName().replace("\"", "\\\"") : "", 
+            user.getImage() != null ? user.getImage().replace("\"", "\\\"") : "");
+            
+        String payloadJson = String.format("{\"accessToken\":\"%s\",\"refreshToken\":\"%s\",\"expiresIn\":%d,\"user\":%s}",
+            accessToken, refreshToken, jwtService.getAccessTtlSeconds(), userJson);
 
+        String html = "<!DOCTYPE html><html><body><script>"
+                + "window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS', payload: " + payloadJson + " }, '*');"
+                + "window.close();"
+                + "</script></body></html>";
+
+        response.getWriter().write(html);
     }
 }

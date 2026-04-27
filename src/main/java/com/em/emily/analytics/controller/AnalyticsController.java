@@ -13,7 +13,7 @@ import java.net.URI;
 import java.util.Base64;
 
 @RestController
-@RequestMapping("/api/analytics")
+@RequestMapping("/api/v1/analytics")
 @RequiredArgsConstructor
 public class AnalyticsController {
 

@@ -32,13 +32,13 @@ public class EmailService {
 
     private String instrumentEmailBody(String body, Long emailId) {
         if (body == null) return null;
-        String trackingPixel = String.format("<img src=\"%s/api/analytics/track/open/%d\" width=\"1\" height=\"1\" style=\"display:none;\" />", baseUrl, emailId);
-        String unsubscribeFooter = String.format("<br/><br/><hr/><p style=\"font-size:12px;color:#888;\">Don't want to receive these emails? <a href=\"%s/api/analytics/track/unsubscribe/%d\">Unsubscribe here</a>.</p>", baseUrl, emailId);
+        String trackingPixel = String.format("<img src=\"%s/api/v1/analytics/track/open/%d\" width=\"1\" height=\"1\" style=\"display:none;\" />", baseUrl, emailId);
+        String unsubscribeFooter = String.format("<br/><br/><hr/><p style=\"font-size:12px;color:#888;\">Don't want to receive these emails? <a href=\"%s/api/v1/analytics/track/unsubscribe/%d\">Unsubscribe here</a>.</p>", baseUrl, emailId);
         String modifiedBody = body + trackingPixel + unsubscribeFooter;
 
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("href=\"(https?://[^\"]+)\"");
         java.util.regex.Matcher matcher = pattern.matcher(modifiedBody);
-        return matcher.replaceAll("href=\"" + baseUrl + "/api/analytics/track/click/" + emailId + "?url=$1\"");
+        return matcher.replaceAll("href=\"" + baseUrl + "/api/v1/analytics/track/click/" + emailId + "?url=$1\"");
     }
 
     @Async("taskExecutor")

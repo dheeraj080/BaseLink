@@ -231,7 +231,7 @@ public class AuthController {
         if (isActivated) {
             // 202 Accepted is fine, but 200 OK is more standard for success
             return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("http://localhost:3000/login?activated=true"))
+                    .location(URI.create("/auth/login?activated=true"))
                     .build();
         } else {
             // 417 Expectation Failed is a bit unusual here;
