@@ -32,6 +32,9 @@ class EmailServiceTest {
     @Mock
     private EmailRepository emailRepository;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private EmailService emailService;
 

@@ -25,6 +25,7 @@ public class EmailService {
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private final JavaMailSender mailSender;
     private final EmailRepository emailRepository;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Async("taskExecutor")
     public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body) {
@@ -57,6 +58,8 @@ public class EmailService {
             logEntry.setStatus(EmailStatus.SENT);
             logEntry.setSentAt(LocalDateTime.now());
             log.info("Email sent successfully to: {}", to);
+            
+            eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
 
         } catch (MessagingException | MailException e) {
             logEntry.setStatus(EmailStatus.FAILED);
@@ -93,6 +96,7 @@ public class EmailService {
 
             logEntry.setStatus(EmailStatus.SENT);
             logEntry.setSentAt(LocalDateTime.now());
+            eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
         } catch (MessagingException | MailException e) {
             logEntry.setStatus(EmailStatus.FAILED);
             logEntry.setErrorMessage(e.getMessage());
