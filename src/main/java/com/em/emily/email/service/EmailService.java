@@ -27,6 +27,20 @@ public class EmailService {
     private final EmailRepository emailRepository;
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
 
+    @org.springframework.beans.factory.annotation.Value("${app.base-url:http://localhost:5000}")
+    private String baseUrl;
+
+    private String instrumentEmailBody(String body, Long emailId) {
+        if (body == null) return null;
+        String trackingPixel = String.format("<img src=\"%s/api/analytics/track/open/%d\" width=\"1\" height=\"1\" style=\"display:none;\" />", baseUrl, emailId);
+        String unsubscribeFooter = String.format("<br/><br/><hr/><p style=\"font-size:12px;color:#888;\">Don't want to receive these emails? <a href=\"%s/api/analytics/track/unsubscribe/%d\">Unsubscribe here</a>.</p>", baseUrl, emailId);
+        String modifiedBody = body + trackingPixel + unsubscribeFooter;
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("href=\"(https?://[^\"]+)\"");
+        java.util.regex.Matcher matcher = pattern.matcher(modifiedBody);
+        return matcher.replaceAll("href=\"" + baseUrl + "/api/analytics/track/click/" + emailId + "?url=$1\"");
+    }
+
     @Async("taskExecutor")
     public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body) {
         // 1. Validation
@@ -47,7 +61,7 @@ public class EmailService {
 
             helper.setTo(to.toArray(new String[0]));
             helper.setSubject(subject);
-            helper.setText(body, true); // true = HTML enabled
+            helper.setText(instrumentEmailBody(body, logEntry.getId()), true); // true = HTML enabled
 
             if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
             if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
@@ -86,7 +100,7 @@ public class EmailService {
 
             helper.setTo(to.toArray(new String[0]));
             helper.setSubject(subject);
-            helper.setText(body, true);
+            helper.setText(instrumentEmailBody(body, logEntry.getId()), true);
 
             if (file != null && !file.isEmpty()) {
                 helper.addAttachment(file.getOriginalFilename(), file);

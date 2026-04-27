@@ -39,7 +39,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        log.info("authHeader: {}", authHeader);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -92,7 +91,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/api/v1/auth");
+        String uri = request.getRequestURI();
+        return uri.startsWith("/api/v1/auth") ||
+               uri.startsWith("/login") ||
+               uri.startsWith("/oauth2") ||
+               uri.startsWith("/error") ||
+               uri.startsWith("/v3/api-docs") ||
+               uri.startsWith("/swagger-ui") ||
+               uri.startsWith("/api/public") ||
+               uri.startsWith("/api/analytics");
     }
 
     private void sendError(HttpServletResponse response, int status, String message)
