@@ -18,7 +18,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "bg-onyx border border-onyx-400 rounded-xl shadow-sm overflow-hidden",
+          "bg-surface-primary border border-border-color rounded-xl shadow-sm overflow-hidden",
           paddingClasses[padding],
           className
         )}

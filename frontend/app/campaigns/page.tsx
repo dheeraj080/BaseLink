@@ -1,17 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { contactService } from '@/services/contact.service';
+import { contactService, groupService } from '@/services/contact.service';
 import { emailService } from '@/services/email.service';
 import { Contact, EmailTemplate, EmailRequest, EmailLog } from '@/types/api';
-import { 
-  Send, 
-  Users, 
-  FileText, 
-  Calendar, 
-  History, 
-  Loader2, 
-  X, 
+import {
+  Send,
+  Users,
+  FileText,
+  Calendar,
+  History,
+  Loader2,
+  X,
   CheckCircle2,
   AlertCircle,
   Clock,
@@ -24,40 +24,46 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { cn, handleError, showSuccess } from '@/lib/utils';
+import { CustomSelect } from '@/components/ui/Select';
 
 export default function CampaignsPage() {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [searchContact, setSearchContact] = useState('');
+  const [toEmails, setToEmails] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [bccEmails, setBccEmails] = useState<string[]>([]);
+
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [logs, setLogs] = useState<EmailLog[]>([]);
+  const [clusters, setClusters] = useState<ContactGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
-  
+
   const [subject, setSubject] = useState('');
-  const [cc, setCc] = useState('');
-  const [bcc, setBcc] = useState('');
-  const [showCcBcc, setShowCcBcc] = useState(false);
   const [body, setBody] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+
+  const [showScheduler, setShowScheduler] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState('');
 
   const fetchData = async () => {
     try {
-      const [cons, allCons, temps, history] = await Promise.all([
+      const [cons, temps, history, clusts, allC] = await Promise.all([
         contactService.getContacts(true),
-        contactService.getContacts(false),
         emailService.listTemplates(),
         emailService.getLogs(),
+        groupService.list(),
+        contactService.getContacts(false),
       ]);
-      setSelectedContacts(cons);
-      setAllContacts(allCons);
-      setTemplates(temps);
-      setLogs(history);
+      setSelectedContacts(Array.isArray(cons) ? cons : []);
+      setTemplates(Array.isArray(temps) ? temps : []);
+      setLogs(Array.isArray(history) ? history : []);
+      setClusters(Array.isArray(clusts) ? clusts : []);
+      setAllContacts(Array.isArray(allC) ? allC : []);
+
     } catch (error) {
-      console.error('Failed to fetch campaign data', error);
+      handleError(error, 'Failed to fetch campaign data');
     } finally {
       setLoading(false);
     }
@@ -65,57 +71,91 @@ export default function CampaignsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function loadData() {
       try {
-        const [cons, allCons, temps, history] = await Promise.all([
+        const [cons, temps, history, clusts, allC] = await Promise.all([
           contactService.getContacts(true),
-          contactService.getContacts(false),
           emailService.listTemplates(),
           emailService.getLogs(),
+          groupService.list(),
+          contactService.getContacts(false),
         ]);
         if (isMounted) {
-          setSelectedContacts(cons);
-          setAllContacts(allCons);
-          setTemplates(temps);
-          setLogs(history);
+          setSelectedContacts(Array.isArray(cons) ? cons : []);
+          setTemplates(Array.isArray(temps) ? temps : []);
+          setLogs(Array.isArray(history) ? history : []);
+          setClusters(Array.isArray(clusts) ? clusts : []);
+          setAllContacts(Array.isArray(allC) ? allC : []);
           setLoading(false);
         }
       } catch (error) {
-        console.error('Failed to fetch campaign data', error);
+        handleError(error, 'Failed to fetch campaign data');
         if (isMounted) setLoading(false);
       }
     }
 
     loadData();
-    
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   const handleSend = async () => {
-    if (!subject || !body || selectedContacts.length === 0) return;
-    
+    if (!subject || !body || toEmails.length === 0) return;
+
     setIsSending(true);
     try {
       const request: EmailRequest = {
-        to: selectedContacts.map(c => c.email),
-        cc: cc ? cc.split(',').map(email => email.trim()).filter(Boolean) : undefined,
-        bcc: bcc ? bcc.split(',').map(email => email.trim()).filter(Boolean) : undefined,
+        to: toEmails,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails.length > 0 ? bccEmails : undefined,
         subject,
         body
       };
       await contactService.broadcast(request);
-      setSuccess(`Success! Campaign sent to ${selectedContacts.length} contacts.`);
+      showSuccess(`Campaign sent successfully.`);
       setSubject('');
-      setCc('');
-      setBcc('');
+      setToEmails([]);
+      setCcEmails([]);
+      setBccEmails([]);
       setBody('');
       fetchData(); // Refresh history
-      setTimeout(() => setSuccess(null), 5000);
     } catch (error) {
-      console.error('Failed to send campaign', error);
+      handleError(error, 'Failed to send campaign');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSchedule = async () => {
+    if (!subject || !body || toEmails.length === 0 || !scheduledTime) return;
+
+    setIsSending(true);
+    try {
+      const request: EmailRequest = {
+        to: toEmails,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails.length > 0 ? bccEmails : undefined,
+        subject,
+        body
+      };
+
+      const isoTime = new Date(scheduledTime).toISOString();
+      await emailService.scheduleEmail(request, isoTime);
+
+      showSuccess(`Campaign scheduled for ${format(new Date(scheduledTime), 'MMM dd, HH:mm')}.`);
+      setSubject('');
+      setToEmails([]);
+      setCcEmails([]);
+      setBccEmails([]);
+      setBody('');
+      setScheduledTime('');
+      setShowScheduler(false);
+      fetchData();
+    } catch (error) {
+      handleError(error, 'Failed to schedule campaign');
     } finally {
       setIsSending(false);
     }
@@ -130,37 +170,37 @@ export default function CampaignsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       <div className="flex items-center justify-between">
         <motion.div
-           initial={{ opacity: 0, y: -10 }}
-           animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-2xl font-bold text-soft-linen tracking-tight">Campaigns</h1>
-          <p className="text-silver text-sm mt-1">
-            Create, manage and track your outreach campaigns.
-          </p>
+          <h1 className="text-3xl font-bold text-white tracking-tighter">Campaign Protocol</h1>
+          <p className="text-text-secondary text-sm mt-2 font-medium">Initialize and monitor your outreach sequences.</p>
         </motion.div>
       </div>
 
-      <div className="flex gap-1 p-1 bg-onyx border border-onyx-400 rounded-lg w-fit">
+
+
+      <div className="flex gap-1.5 p-1.5 bg-surface-primary border border-border-color rounded-full w-fit">
         <button
           onClick={() => setActiveTab('compose')}
           className={cn(
-            "px-6 py-2 rounded-md text-sm font-medium transition-all duration-200",
-            activeTab === 'compose' ? "bg-onyx-400 text-soft-linen shadow-sm" : "text-silver hover:text-white-smoke"
+            "px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+            activeTab === 'compose' ? "bg-white text-bg-primary shadow-2xl" : "text-text-secondary hover:text-white"
           )}
         >
-          New Campaign
+          Initialize Sequence
         </button>
         <button
           onClick={() => setActiveTab('history')}
           className={cn(
-            "px-6 py-2 rounded-md text-sm font-medium transition-all duration-200",
-            activeTab === 'history' ? "bg-onyx-400 text-soft-linen shadow-sm" : "text-silver hover:text-white-smoke"
+            "px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+            activeTab === 'history' ? "bg-white text-bg-primary shadow-2xl" : "text-text-secondary hover:text-white"
           )}
         >
-          Activity Logs
+          Telemetry Logs
         </button>
       </div>
 
@@ -172,168 +212,214 @@ export default function CampaignsPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+            className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start"
           >
-            <div className="lg:col-span-2 space-y-8">
-              <div className="bg-onyx border border-onyx-400 rounded-xl p-8 shadow-sm">
-                {success && (
-                  <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-soft-linen/10 border border-soft-linen/20 rounded-lg flex items-center gap-3 text-soft-linen mb-8">
-                    <CheckCircle2 className="w-5 h-5 shrink-0" />
-                    <p className="text-sm font-medium">{success}</p>
-                    <button onClick={() => setSuccess(null)} className="ml-auto p-1 hover:bg-soft-linen/10 rounded-md">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </motion.div>
-                )}
+            {/* Left Panel: Composer */}
+            <div className="xl:col-span-2 space-y-8 bg-[#0a0a0c] border border-white/5 p-10 rounded-[32px] shadow-2xl">
+              <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary flex items-center gap-2">
+                <Send className="w-4 h-4" /> Message Command Center
+              </h2>
 
-                <div className="space-y-8">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-silver uppercase tracking-wider ml-1">Recipients</label>
-                      <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => setIsContactModalOpen(true)}
-                          className="text-xs font-semibold text-soft-linen hover:text-white-smoke px-3 py-1.5 bg-onyx-400 border border-onyx-300 rounded-lg transition-all flex items-center gap-1.5"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Manage
-                        </button>
-                        <span className="text-xs font-semibold text-soft-linen bg-soft-linen/10 px-2.5 py-1 rounded-full border border-soft-linen/20">
-                          {selectedContacts.length} contacts selected
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-4 bg-onyx border border-onyx-400 rounded-lg min-h-[60px] flex flex-wrap gap-2 text-sm">
-                      {selectedContacts.length === 0 ? (
-                        <div className="flex items-center gap-2 py-1">
-                           <AlertCircle className="w-4 h-4 text-silver" />
-                           <p className="text-silver italic">No contacts selected. Please select contacts from the directory.</p>
-                        </div>
-                      ) : (
-                        selectedContacts.slice(0, 5).map(c => (
-                          <span key={c.id} className="text-xs font-medium px-2 py-1 bg-onyx-400 border border-onyx-300 rounded-md text-white-smoke">
-                            {c.email}
-                          </span>
-                        ))
-                      )}
-                      {selectedContacts.length > 5 && (
-                        <span className="text-xs font-semibold px-2 py-1 text-silver bg-onyx-400/50 border border-onyx-300 rounded-md">+{selectedContacts.length - 5} more</span>
-                      )}
-                    </div>
+              {/* To Recipients */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-text-secondary/60">To:</span>
+                  <span className="text-[10px] font-bold text-white bg-white/5 px-2 py-1 rounded-full">{toEmails.length} Target(s)</span>
+                </div>
+                <div className="flex flex-wrap gap-2 p-4 bg-white/[0.02] border border-white/5 rounded-2xl min-h-[52px]">
+                  {toEmails.map(email => (
+                    <span key={email} className="flex items-center gap-1 bg-white/10 text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      {email}
+                      <button onClick={() => setToEmails(toEmails.filter(e => e !== email))} className="text-white/40 hover:text-red-400 font-bold text-xs ml-1">×</button>
+                    </span>
+                  ))}
+                  {toEmails.length === 0 && <p className="text-text-secondary/40 text-xs italic">Select target indices below...</p>}
+                </div>
+               <div className="grid grid-cols-2 gap-4">
+              <CustomSelect
+                options={allContacts.map(c => ({ value: c.email, label: c.name || c.email }))}
+                value=""
+                placeholder="+ Add Individual..."
+                onChange={(val) => {
+                  if (val && !toEmails.includes(val)) setToEmails([...toEmails, val]);
+                }}
+              />
+
+              <CustomSelect
+                options={clusters.map(cluster => ({ value: cluster.id || '', label: cluster.name }))}
+                value=""
+                placeholder="+ Add Cluster..."
+                onChange={(clusterId) => {
+                  if (!clusterId) return;
+                  const clusterCons = allContacts.filter(c => c.groups?.some(g => g.id === clusterId));
+                  const newEmails = [...toEmails];
+                  clusterCons.forEach(c => {
+                    if (!newEmails.includes(c.email)) newEmails.push(c.email);
+                  });
+                  setToEmails(newEmails);
+                }}
+              />
+            </div>
+          </div>
+
+              {/* CC / BCC Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* CC */}
+                <div className="space-y-3">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-text-secondary/60">CC:</span>
+                  <div className="flex flex-wrap gap-1 p-3 bg-white/[0.01] border border-white/5 rounded-2xl min-h-[44px]">
+                    {ccEmails.map(email => (
+                      <span key={email} className="flex items-center gap-1 bg-white/5 text-white/80 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        {email}
+                        <button onClick={() => setCcEmails(ccEmails.filter(e => e !== email))} className="text-white/20 hover:text-red-400 ml-1">×</button>
+                      </span>
+                    ))}
                   </div>
+              <CustomSelect
+                options={allContacts.map(c => ({ value: c.email, label: c.name || c.email }))}
+                value=""
+                placeholder="+ CC Contact..."
+                onChange={(val) => {
+                  if (val && !ccEmails.includes(val)) setCcEmails([...ccEmails, val]);
+                }}
+              />
+                </div>
 
-                  <div className="flex justify-end">
-                    <button 
-                      type="button" 
-                      onClick={() => setShowCcBcc(!showCcBcc)} 
-                      className="text-xs font-semibold text-silver hover:text-soft-linen transition-all"
+                {/* BCC */}
+                <div className="space-y-3">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-text-secondary/60">BCC:</span>
+                  <div className="flex flex-wrap gap-1 p-3 bg-white/[0.01] border border-white/5 rounded-2xl min-h-[44px]">
+                    {bccEmails.map(email => (
+                      <span key={email} className="flex items-center gap-1 bg-white/5 text-white/80 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                        {email}
+                        <button onClick={() => setBccEmails(bccEmails.filter(e => e !== email))} className="text-white/20 hover:text-red-400 ml-1">×</button>
+                      </span>
+                    ))}
+                  </div>
+              <CustomSelect
+                options={allContacts.map(c => ({ value: c.email, label: c.name || c.email }))}
+                value=""
+                placeholder="+ BCC Contact..."
+                onChange={(val) => {
+                  if (val && !bccEmails.includes(val)) setBccEmails([...bccEmails, val]);
+                }}
+              />
+                </div>
+              </div>
+
+              {/* Subject */}
+              <div className="space-y-2">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-text-secondary/60">Subject:</span>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="State your campaign intent..."
+                  className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-6 text-white text-sm focus:border-white/20 outline-none transition-all"
+                />
+              </div>
+
+              {/* Body */}
+              <div className="space-y-2">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-text-secondary/60">Payload Template:</span>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Compose sequential protocol logic..."
+                  rows={10}
+                  className="w-full bg-white/[0.02] border border-white/5 rounded-[24px] p-6 text-white text-sm focus:border-white/20 outline-none transition-all resize-none font-mono"
+                />
+              </div>
+
+              {/* Dispatch Action */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t border-white/5">
+                <Button
+                  id="send-campaign"
+                  disabled={isSending || toEmails.length === 0 || !subject || !body}
+                  onClick={handleSend}
+                  className="h-12 px-10 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg"
+                  leftIcon={isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                >
+                  Deploy Sequence
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowScheduler(!showScheduler)}
+                  className="text-[10px] font-bold uppercase tracking-widest rounded-full"
+                  leftIcon={<Calendar className="w-4 h-4" />}
+                >
+                  {showScheduler ? "Hide Queue" : "Delay Execution"}
+                </Button>
+
+                {showScheduler && (
+                  <div className="flex items-center gap-3 bg-white/5 p-2 rounded-2xl border border-white/5">
+                    <input
+                      type="datetime-local"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="bg-transparent border-none text-white text-xs outline-none px-2 uppercase tracking-widest"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="rounded-xl h-9 text-[9px] font-bold tracking-widest uppercase px-4"
+                      disabled={isSending || !scheduledTime || toEmails.length === 0 || !subject || !body}
+                      onClick={handleSchedule}
                     >
-                      {showCcBcc ? '- Hide CC/BCC' : '+ Add CC/BCC'}
-                    </button>
+                      Queue
+                    </Button>
                   </div>
-
-                  {showCcBcc && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <Input
-                        label="CC Recipients"
-                        placeholder="Separate emails with commas..."
-                        value={cc}
-                        onChange={(e) => setCc(e.target.value)}
-                        className="bg-onyx border-onyx-400"
-                      />
-                      <Input
-                        label="BCC Recipients"
-                        placeholder="Separate emails with commas..."
-                        value={bcc}
-                        onChange={(e) => setBcc(e.target.value)}
-                        className="bg-onyx border-onyx-400"
-                      />
-                    </div>
-                  )}
-
-                  <Input
-                    label="Subject line"
-                    placeholder="Briefly describe the purpose of this email..."
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="bg-onyx border-onyx-400"
-                  />
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-silver uppercase tracking-wider ml-1">Message Body</label>
-                    <textarea
-                      placeholder="Write your professional message here..."
-                      rows={12}
-                      className="w-full bg-onyx border border-onyx-400 rounded-lg py-4 px-4 focus:ring-1 focus:ring-silver/30 focus:border-silver transition-all outline-none resize-none text-soft-linen text-sm leading-relaxed placeholder:text-onyx-700"
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                    ></textarea>
-                  </div>
-                </div>
-
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-onyx-400 mt-8">
-                  <button className="text-xs font-semibold text-silver hover:text-soft-linen flex items-center gap-2 transition-colors uppercase tracking-widest px-4 py-2 hover:bg-onyx-400 rounded-lg border border-transparent hover:border-onyx-300">
-                    <Calendar className="w-4 h-4" />
-                    Schedule for later
-                  </button>
-                  <Button
-                    id="send-campaign"
-                    disabled={isSending || selectedContacts.length === 0 || !subject || !body}
-                    onClick={handleSend}
-                    className="min-w-[200px]"
-                    leftIcon={isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  >
-                    Send Campaign
-                  </Button>
-                </div>
+                )}
               </div>
             </div>
 
+            {/* Right Panel: Blueprints & Telemetry */}
             <div className="space-y-8">
-              <div className="bg-onyx border border-onyx-400 rounded-xl p-6 shadow-sm">
-                <h3 className="text-xs font-bold uppercase tracking-widest text-silver mb-6 flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Email Templates
+              {/* Blueprints */}
+              <div className="bg-[#0a0a0c] border border-white/5 p-8 rounded-[32px] shadow-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary mb-6 flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Layout Blueprints
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2">
                   {templates.length === 0 ? (
-                    <div className="p-6 border border-dashed border-onyx-400 rounded-xl text-center">
-                       <p className="text-xs text-silver/50 italic">No saved templates found.</p>
-                    </div>
+                    <p className="text-center text-text-secondary/20 italic text-xs py-4">No frameworks.</p>
                   ) : (
                     templates.map(t => (
                       <button
                         key={t.id}
                         onClick={() => applyTemplate(t.id!)}
-                        className="w-full p-4 rounded-xl border border-onyx-400 bg-onyx hover:border-soft-linen/50 hover:bg-soft-linen/5 transition-all text-left flex items-center justify-between group"
+                        className="w-full p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-xl text-left flex items-center justify-between group transition-colors"
                       >
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-soft-linen group-hover:text-soft-linen transition-colors truncate">{t.name}</p>
-                          <p className="text-xs text-silver truncate mt-0.5">{t.subject}</p>
-                        </div>
-                        <Plus className="w-4 h-4 text-onyx-700 group-hover:text-soft-linen shrink-0 transition-colors" />
+                        <span className="text-xs font-bold text-white/80 group-hover:text-white truncate">{t.name}</span>
+                        <Plus className="w-4 h-4 text-white/20 group-hover:text-white transition-colors" />
                       </button>
                     ))
                   )}
                 </div>
               </div>
 
-              <div className="bg-onyx border border-onyx-400 rounded-xl p-6 shadow-sm relative overflow-hidden group">
-                <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }}></div>
-                <h3 className="text-xs font-bold uppercase tracking-widest text-silver mb-6">Campaign Status</h3>
-                <div className="space-y-6 relative z-10">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-silver">Total Monthly Limit</span>
-                      <span className="text-xs font-bold text-soft-linen">25% used</span>
-                    </div>
-                    <div className="h-2 bg-onyx rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: '25%' }} transition={{ duration: 1 }} className="h-full bg-soft-linen shadow-sm" />
-                    </div>
-                  </div>
-                  <div className="p-4 bg-onyx-100/50 rounded-lg border border-onyx-400">
-                    <p className="text-[11px] text-silver leading-relaxed italic">
-                      Systems are operational. Email batches are being processed through professional delivery nodes.
-                    </p>
-                  </div>
+              {/* Telemetry Logs */}
+              <div className="bg-[#0a0a0c] border border-white/5 p-8 rounded-[32px] shadow-2xl">
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary mb-6 flex items-center gap-2">
+                  <History className="w-4 h-4" /> Logs
+                </h3>
+                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
+                  {logs.length === 0 ? (
+                    <p className="text-center text-text-secondary/20 italic text-xs py-4">No records found.</p>
+                  ) : (
+                    logs.map(log => (
+                      <div key={log.id} className="p-4 bg-white/[0.01] border border-white/5 rounded-xl flex flex-col gap-1.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-white truncate max-w-[150px]">{log.recipient}</span>
+                          <span className={cn(
+                            "text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider",
+                            log.status === 'SENT' ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                          )}>{log.status}</span>
+                        </div>
+                        <p className="text-[10px] text-text-secondary/60 truncate italic">{log.subject}</p>
+                        <span className="text-[8px] text-text-secondary/30 text-right mt-1 font-mono">{log.sentAt ? format(new Date(log.sentAt), 'HH:mm:ss') : ''}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -345,54 +431,54 @@ export default function CampaignsPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="bg-onyx border border-onyx-400 rounded-xl overflow-hidden shadow-sm"
+            className="bg-surface-primary border border-border-color rounded-[32px] overflow-hidden shadow-2xl shadow-black/20"
           >
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-onyx-100/50 border-b border-onyx-400">
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-silver">Recipient</th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-silver">Subject</th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-silver">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-silver text-right">Sent Date</th>
+                <tr className="bg-bg-primary/30 border-b border-border-color">
+                  <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Node Target</th>
+                  <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Protocol Header</th>
+                  <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Operational State</th>
+                  <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary text-right">Sequence Time</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-onyx-400">
+              <tbody className="divide-y divide-border-color">
                 {logs.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-20 text-center text-silver/50 bg-onyx-100/50">
-                      <History className="w-10 h-10 mx-auto mb-4 opacity-10" />
-                      <p className="text-sm">No activity recorded yet.</p>
+                    <td colSpan={4} className="px-10 py-24 text-center text-text-secondary/20 bg-bg-primary/50">
+                      <History className="w-12 h-12 mx-auto mb-6 opacity-5" />
+                      <p className="text-[10px] font-bold uppercase tracking-[0.3em]">No telemetry recorded</p>
                     </td>
                   </tr>
                 ) : (
                   logs.map((log) => (
-                    <tr key={log.id} className="hover:bg-onyx-100/30 transition-colors group cursor-default">
-                      <td className="px-6 py-5">
-                        <span className="text-sm font-medium text-soft-linen">{log.recipient}</span>
+                    <tr key={log.id} className="hover:bg-white/[0.02] transition-colors group cursor-default">
+                      <td className="px-10 py-6">
+                        <span className="text-sm font-bold text-white tracking-tight">{log.recipient}</span>
                       </td>
-                      <td className="px-6 py-5">
-                        <span className="text-xs text-silver italic truncate max-w-[200px] inline-block">{log.subject}</span>
+                      <td className="px-10 py-6">
+                        <span className="text-[11px] font-bold text-text-secondary/60 uppercase tracking-widest truncate max-w-[200px] inline-block">{log.subject}</span>
                       </td>
-                      <td className="px-6 py-5">
+                      <td className="px-10 py-6">
                         <div className={cn(
-                          "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-                          log.status === 'SENT' ? "bg-soft-linen/10 text-soft-linen border-soft-linen/20" :
-                          log.status === 'FAILED' ? "bg-onyx text-silver border-onyx-400" :
-                          "bg-onyx-400/50 text-silver border-onyx-300"
+                          "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border shadow-xl",
+                          log.status === 'SENT' ? "bg-white/5 text-white border-white/10" :
+                            log.status === 'FAILED' ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                              "bg-surface-primary text-text-secondary border-border-color"
                         )}>
                           <div className={cn(
-                            "w-1 h-1 rounded-full",
-                            log.status === 'SENT' ? "bg-soft-linen" :
-                            log.status === 'FAILED' ? "bg-silver/50" :
-                            "bg-silver/40"
+                            "w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.5)]",
+                            log.status === 'SENT' ? "bg-white" :
+                              log.status === 'FAILED' ? "bg-red-500" :
+                                "bg-text-secondary/40"
                           )} />
-                          {log.status}
+                          {log.status === 'SENT' ? 'SENT' : log.status}
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-right">
-                         <span className="text-xs text-silver font-medium">
-                           {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, HH:mm') : '—'}
-                         </span>
+                      <td className="px-10 py-6 text-right">
+                        <span className="text-[10px] font-bold text-text-secondary/40 uppercase tracking-widest">
+                          {log.sentAt ? format(new Date(log.sentAt), 'MMM dd, HH:mm') : '—'}
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -400,101 +486,6 @@ export default function CampaignsPage() {
               </tbody>
             </table>
           </motion.div>
-        )}
-      </AnimatePresence>
-      {/* Contact Selection Modal */}
-      <AnimatePresence>
-        {isContactModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-onyx/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0" 
-              onClick={() => setIsContactModalOpen(false)}
-            />
-            <motion.div 
-              initial={{ scale: 0.98, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 10 }}
-              className="bg-onyx border border-onyx-400 rounded-xl w-full max-w-lg shadow-2xl p-8 relative z-10 flex flex-col max-h-[80vh]"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-soft-linen">Select Recipients</h3>
-                  <p className="text-sm text-silver mt-1">Choose contacts to include in this campaign.</p>
-                </div>
-                <button onClick={() => setIsContactModalOpen(false)} className="p-2 bg-onyx hover:bg-onyx-100 rounded-lg transition-all text-silver">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <Input 
-                  placeholder="Search contacts by name or email..." 
-                  value={searchContact}
-                  onChange={(e) => setSearchContact(e.target.value)}
-                  className="bg-onyx border-onyx-400"
-                />
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                {allContacts
-                  .filter(c => 
-                    c.name?.toLowerCase().includes(searchContact.toLowerCase()) || 
-                    c.email?.toLowerCase().includes(searchContact.toLowerCase())
-                  )
-                  .map(contact => {
-                    const isSelected = selectedContacts.some(c => c.id === contact.id);
-                    return (
-                      <div 
-                        key={contact.id} 
-                        onClick={async () => {
-                          try {
-                            await contactService.toggleSelection(contact.id!, !isSelected);
-                            if (isSelected) {
-                              setSelectedContacts(selectedContacts.filter(c => c.id !== contact.id));
-                            } else {
-                              setSelectedContacts([...selectedContacts, contact]);
-                            }
-                          } catch (err) {
-                            console.error('Failed to toggle recipient', err);
-                          }
-                        }}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all",
-                          isSelected 
-                            ? "bg-soft-linen/5 border-soft-linen/30 text-soft-linen" 
-                            : "bg-onyx-100/50 border-onyx-400 text-silver hover:bg-onyx-100/80"
-                        )}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold truncate">{contact.name || 'Unnamed'}</p>
-                          <p className="text-xs text-silver truncate mt-0.5">{contact.email}</p>
-                        </div>
-                        <div className={cn(
-                          "w-5 h-5 rounded border flex items-center justify-center transition-all",
-                          isSelected 
-                            ? "border-soft-linen bg-soft-linen/10" 
-                            : "border-onyx-300"
-                        )}>
-                          {isSelected && <div className="w-2.5 h-2.5 bg-soft-linen rounded-sm" />}
-                        </div>
-                      </div>
-                    );
-                  })}
-                {allContacts.length === 0 && (
-                  <p className="text-center text-sm text-silver italic py-8">No contacts found. Go to Directory to add some.</p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end pt-6 border-t border-onyx-400 mt-6">
-                <Button variant="secondary" onClick={() => setIsContactModalOpen(false)}>
-                  Done
-                </Button>
-              </div>
-            </motion.div>
-          </div>
         )}
       </AnimatePresence>
     </div>

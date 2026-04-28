@@ -15,7 +15,7 @@ import {
   Camera
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { cn } from '@/lib/utils';
+import { cn, showSuccess } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
@@ -36,6 +36,7 @@ export default function SettingsPage() {
     setIsSaving(true);
     setTimeout(() => {
       setIsSaving(false);
+      showSuccess('Settings saved successfully');
     }, 1500);
   };
 

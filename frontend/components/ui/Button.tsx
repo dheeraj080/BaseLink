@@ -8,10 +8,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-soft-linen text-onyx hover:bg-white-smoke shadow-sm border border-white-smoke",
-        secondary: "bg-onyx-400 text-soft-linen border border-onyx-300 hover:bg-onyx-300 hover:text-soft-linen transition-all shadow-sm",
-        ghost: "bg-transparent text-silver hover:text-white-smoke hover:bg-onyx-400",
-        danger: "bg-onyx text-soft-linen border border-onyx-300 hover:bg-onyx-400 hover:text-soft-linen transition-all shadow-sm font-semibold hover:border-soft-linen/20",
+        primary: "bg-white text-bg-primary hover:bg-text-main shadow-sm border border-white",
+        secondary: "bg-surface-secondary text-text-main border border-border-color hover:bg-surface-primary hover:text-white transition-all shadow-sm",
+        ghost: "bg-transparent text-text-secondary hover:text-white hover:bg-surface-primary",
+        danger: "bg-bg-primary text-text-main border border-border-color hover:bg-surface-secondary hover:text-white transition-all shadow-sm font-semibold hover:border-text-secondary/20",
       },
       size: {
         sm: "px-3 py-1.5 h-8 gap-1.5 text-xs",

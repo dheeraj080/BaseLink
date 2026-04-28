@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, ArrowRight, AlertCircle, Loader2, Github } from 'lucide-react';
 import { motion } from 'motion/react';
+import { handleError } from '@/lib/utils';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -60,7 +61,7 @@ export default function LoginPage() {
         `width=${width},height=${height},left=${left},top=${top}`
       );
     } catch (err) {
-      console.error('Failed to initiate OAuth', err);
+      handleError(err, `Failed to initiate ${provider} login.`);
       setError(`Failed to initiate ${provider} login.`);
     }
   };

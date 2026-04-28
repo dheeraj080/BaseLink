@@ -114,8 +114,8 @@ public class ContactController {
         for (Contact contact : selectedContacts) {
             com.em.emily.email.EmailRequest message = new com.em.emily.email.EmailRequest(
                     List.of(contact.getEmail()),
-                    null,
-                    null,
+                    request.cc(),
+                    request.bcc(),
                     null,
                     request.subject(),
                     request.body()

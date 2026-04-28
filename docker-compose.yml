@@ -13,7 +13,7 @@ services:
     networks:
       - email-net
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d email_db"]
       interval: 5s

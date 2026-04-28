@@ -53,6 +53,7 @@ public class Contact {
             inverseJoinColumns = @JoinColumn(name = "group_id")
     )
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("contacts")
     private java.util.Set<ContactGroup> groups = new java.util.HashSet<>();
 
 

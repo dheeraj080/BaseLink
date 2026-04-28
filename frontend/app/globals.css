@@ -3,80 +3,48 @@
 @theme {
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   
-  /* New Custom Color Palette */
-  --color-onyx-100: #040404;
-  --color-onyx-200: #070707;
-  --color-onyx-300: #0b0b0b;
-  --color-onyx-400: #0e0e0e;
-  --color-onyx-500: #111111;
-  --color-onyx-600: #414141;
-  --color-onyx-700: #717171;
-  --color-onyx-800: #a0a0a0;
-  --color-onyx-900: #d0d0d0;
-  --color-onyx: #111111;
-
-  --color-graphite-100: #090909;
-  --color-graphite-200: #121212;
-  --color-graphite-300: #1c1c1c;
-  --color-graphite-400: #252525;
-  --color-graphite-500: #2e2e2e;
-  --color-graphite-600: #585858;
-  --color-graphite-700: #828282;
-  --color-graphite-800: #ababab;
-  --color-graphite-900: #d5d5d5;
-  --color-graphite: #2e2e2e;
-
-  --color-silver-100: #262626;
-  --color-silver-200: #4d4d4d;
-  --color-silver-300: #737373;
-  --color-silver-400: #999999;
-  --color-silver-500: #c0c0c0;
-  --color-silver-600: #cccccc;
-  --color-silver-700: #d9d9d9;
-  --color-silver-800: #e6e6e6;
-  --color-silver-900: #f2f2f2;
-  --color-silver: #c0c0c0;
-
-  --color-soft-linen-100: #3e321d;
-  --color-soft-linen-200: #7d643b;
-  --color-soft-linen-300: #b4945f;
-  --color-soft-linen-400: #d1be9e;
-  --color-soft-linen-500: #efe8dd;
-  --color-soft-linen-600: #f2ece3;
-  --color-soft-linen-700: #f5f1ea;
-  --color-soft-linen-800: #f8f6f1;
-  --color-soft-linen-900: #fcfaf8;
-  --color-soft-linen: #efe8dd;
-
-  --color-white-smoke-100: #313131;
-  --color-white-smoke-200: #626262;
-  --color-white-smoke-300: #939393;
-  --color-white-smoke-400: #c4c4c4;
-  --color-white-smoke-500: #f5f5f5;
-  --color-white-smoke-600: #f7f7f7;
-  --color-white-smoke-700: #f9f9f9;
-  --color-white-smoke-800: #fbfbfb;
-  --color-white-smoke-900: #fdfdfd;
-  --color-white-smoke: #f5f5f5;
+  /* Monochrome Dark Mode Design System */
+  --color-bg-primary: #000000;
+  --color-surface-primary: #121212;
+  --color-surface-secondary: #1e1e1e;
+  --color-text-main: #e5e5e5;
+  --color-text-secondary: #a3a3a3;
+  --color-border-color: #333333;
+  --color-white: #ffffff;
+  
+  /* Aliasing for stability */
+  --color-onyx: var(--color-bg-primary);
+  --color-onyx-100: var(--color-surface-primary);
+  --color-onyx-400: var(--color-border-color);
+  --color-soft-linen: var(--color-text-main);
+  --color-silver: var(--color-text-secondary);
+  --color-primary: var(--color-white);
+  --color-primary-500: var(--color-text-main);
 }
 
 @layer base {
   :root {
-    --font-inter: var(--font-sans);
+    --bg-primary: #000000;
+    --surface-primary: #121212;
+    --surface-secondary: #1e1e1e;
+    --text-main: #e5e5e5;
+    --text-secondary: #a3a3a3;
+    --border-color: #333333;
+    --accent: #ffffff;
   }
   
   * {
-    @apply border-onyx-400;
+    @apply border-border-color;
   }
 
   body {
-    @apply font-sans bg-onyx text-soft-linen antialiased;
+    @apply font-sans bg-bg-primary text-text-main antialiased;
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-onyx-100/50 backdrop-blur-md border border-onyx-400/60 shadow-xl;
+    @apply bg-surface-primary backdrop-blur-md border border-border-color shadow-xl;
   }
   
   .text-balance {
