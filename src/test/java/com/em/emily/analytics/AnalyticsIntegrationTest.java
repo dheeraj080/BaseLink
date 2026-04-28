@@ -57,7 +57,7 @@ public class AnalyticsIntegrationTest {
                 .recipient("test@example.com")
                 .build();
 
-        mockMvc.perform(post("/api/analytics/events")
+        mockMvc.perform(post("/api/v1/analytics/events")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sentEvent)))
                 .andExpect(status().isCreated());
@@ -69,26 +69,26 @@ public class AnalyticsIntegrationTest {
                 .recipient("test@example.com")
                 .build();
 
-        mockMvc.perform(post("/api/analytics/events")
+        mockMvc.perform(post("/api/v1/analytics/events")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(deliveredEvent)))
                 .andExpect(status().isCreated());
 
         // 3. Track OPEN
-        mockMvc.perform(get("/api/analytics/track/open/" + emailId))
+        mockMvc.perform(get("/api/v1/analytics/track/open/" + emailId))
                 .andExpect(status().isOk());
 
         // Track OPEN again (should not increment distinct count)
-        mockMvc.perform(get("/api/analytics/track/open/" + emailId))
+        mockMvc.perform(get("/api/v1/analytics/track/open/" + emailId))
                 .andExpect(status().isOk());
 
         // 4. Track CLICK
-        mockMvc.perform(get("/api/analytics/track/click/" + emailId)
+        mockMvc.perform(get("/api/v1/analytics/track/click/" + emailId)
                         .param("url", "http://example.com"))
                 .andExpect(status().isFound());
 
         // 5. Verify Stats
-        MvcResult result = mockMvc.perform(get("/api/analytics/stats"))
+        MvcResult result = mockMvc.perform(get("/api/v1/analytics/stats"))
                 .andExpect(status().isOk())
                 .andReturn();
 

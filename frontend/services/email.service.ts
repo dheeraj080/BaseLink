@@ -1,6 +1,10 @@
 import api from '@/lib/api';
 import { EmailTemplate, EmailRequest, EmailLog } from '@/types/api';
 
+let cachedLogs: EmailLog[] | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 5000; // 5 seconds cache
+
 export const emailService = {
   listTemplates: async (): Promise<EmailTemplate[]> => {
     const response = await api.get<EmailTemplate[]>('/email/templates');
@@ -23,6 +27,7 @@ export const emailService = {
   },
   sendEmail: async (request: EmailRequest): Promise<string> => {
     const response = await api.post<string>('/email/send', request);
+    cachedLogs = null; // Invalidate cache on send
     return response.data;
   },
   scheduleEmail: async (request: EmailRequest, scheduleTime: string): Promise<string> => {
@@ -34,7 +39,13 @@ export const emailService = {
     return response.data;
   },
   getLogs: async (): Promise<EmailLog[]> => {
+    const now = Date.now();
+    if (cachedLogs && (now - lastFetchTime < CACHE_TTL)) {
+      return cachedLogs;
+    }
     const response = await api.get<EmailLog[]>('/email/logs');
+    cachedLogs = response.data;
+    lastFetchTime = now;
     return response.data;
   },
 };

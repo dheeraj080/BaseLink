@@ -33,11 +33,22 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLastUsedProvider(localStorage.getItem('lastUsedProvider'));
+    }
+  }, []);
+
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setError(null);
     try {
       const response = await authService.login(data);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastUsedProvider', 'CREDENTIALS');
+      }
       login(response);
       router.push('/');
     } catch (err: any) {
@@ -49,6 +60,9 @@ export default function LoginPage() {
 
   const handleOAuthLogin = async (provider: 'GOOGLE' | 'GITHUB') => {
     try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastUsedProvider', provider);
+      }
       const { url } = await authService.getOAuthUrl(provider);
       const width = 600;
       const height = 700;
@@ -250,16 +264,22 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleOAuthLogin('GOOGLE')}
-                className="flex items-center justify-center gap-3 bg-onyx border border-onyx-400 hover:border-silver/30 rounded-xl py-3 text-soft-linen text-xs font-bold uppercase tracking-wider transition-all"
+                className="flex items-center justify-center gap-3 bg-onyx border border-onyx-400 hover:border-silver/30 rounded-xl py-3 text-soft-linen text-xs font-bold uppercase tracking-wider transition-all relative"
               >
+                {lastUsedProvider === 'GOOGLE' && (
+                  <span className="absolute -top-2 right-2 bg-white text-bg-primary text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg border border-border-color">LAST USED</span>
+                )}
                 <div className="w-4 h-4 bg-soft-linen rounded-full flex items-center justify-center text-[10px] text-onyx font-bold">G</div>
                 Google
               </button>
               <button
                 type="button"
                 onClick={() => handleOAuthLogin('GITHUB')}
-                className="flex items-center justify-center gap-3 bg-onyx border border-onyx-400 hover:border-silver/30 rounded-xl py-3 text-soft-linen text-xs font-bold uppercase tracking-wider transition-all"
+                className="flex items-center justify-center gap-3 bg-onyx border border-onyx-400 hover:border-silver/30 rounded-xl py-3 text-soft-linen text-xs font-bold uppercase tracking-wider transition-all relative"
               >
+                {lastUsedProvider === 'GITHUB' && (
+                  <span className="absolute -top-2 right-2 bg-white text-bg-primary text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-lg border border-border-color">LAST USED</span>
+                )}
                 <Github className="w-4 h-4" />
                 GitHub
               </button>

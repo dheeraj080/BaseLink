@@ -5,6 +5,9 @@ import com.em.emily.contact.repository.ContactRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.csv.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,15 +24,27 @@ public class ContactService {
 
     private final ContactRepository contactRepository;
 
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", key = "#contact.userId"),
+        @CacheEvict(value = "selected_contacts", key = "#contact.userId")
+    })
     public Contact createContact(Contact contact) {
         return contactRepository.save(contact);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", allEntries = true),
+        @CacheEvict(value = "selected_contacts", allEntries = true)
+    })
     public List<Contact> createContacts(List<Contact> contacts) {
         return contactRepository.saveAll(contacts);
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", key = "#userId"),
+        @CacheEvict(value = "selected_contacts", key = "#userId")
+    })
     public List<Contact> uploadCsv(MultipartFile file, UUID userId) throws IOException {
         if (file.isEmpty()) throw new RuntimeException("File is empty");
 
@@ -94,6 +109,10 @@ public class ContactService {
 
     // NEW METHOD: This makes your PATCH /selection endpoint work
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", allEntries = true),
+        @CacheEvict(value = "selected_contacts", allEntries = true)
+    })
     public void toggleSelection(UUID id, boolean selected) {
         Contact contact = contactRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
@@ -102,14 +121,20 @@ public class ContactService {
         contactRepository.save(contact);
     }
 
+    @Cacheable(value = "contacts", key = "#userId")
     public List<Contact> getAllUserContacts(UUID userId) {
         return contactRepository.findByUserId(userId);
     }
 
+    @Cacheable(value = "selected_contacts", key = "#userId")
     public List<Contact> getSelectedContacts(UUID userId) {
         return contactRepository.findByUserIdAndSelected(userId, true);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", allEntries = true),
+        @CacheEvict(value = "selected_contacts", allEntries = true)
+    })
     public Contact updateContact(UUID id, Contact details) {
         Contact existing = contactRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Contact not found"));
@@ -118,15 +143,24 @@ public class ContactService {
         existing.setEmail(details.getEmail());
         existing.setPhoneNo(details.getPhoneNo());
         existing.setDescription(details.getDescription());
+        existing.setGroups(details.getGroups());
 
         return contactRepository.save(existing);
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", allEntries = true),
+        @CacheEvict(value = "selected_contacts", allEntries = true)
+    })
     public void bulkSelect(List<UUID> ids, boolean selected) {
         contactRepository.updateBulkSelection(ids, selected);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "contacts", allEntries = true),
+        @CacheEvict(value = "selected_contacts", allEntries = true)
+    })
     public void deleteContact(UUID id) {
         contactRepository.deleteById(id);
     }

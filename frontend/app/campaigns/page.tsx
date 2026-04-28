@@ -176,8 +176,8 @@ export default function CampaignsPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <h1 className="text-3xl font-bold text-white tracking-tighter">Campaign Protocol</h1>
-          <p className="text-text-secondary text-sm mt-2 font-medium">Initialize and monitor your outreach sequences.</p>
+          <h1 className="text-3xl font-bold text-white tracking-tighter">Campaign Management</h1>
+          <p className="text-text-secondary text-xs mt-2 font-medium">Create, dispatch, and evaluate your sequence campaigns.</p>
         </motion.div>
       </div>
 

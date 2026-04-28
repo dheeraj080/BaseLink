@@ -81,7 +81,7 @@ export interface LoginRequest {
 
 export interface EventRequest {
   emailId?: number;
-  eventType?: 'SENT' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'UNSUBSCRIBED' | 'BOUNCED' | 'SPAM_COMPLAINT';
+  eventType?: 'SENT' | 'DELIVERED' | 'OPENED' | 'CLICKED' | 'UNSUBSCRIBED' | 'BOUNCED' | 'SPAM_COMPLAINT' | 'REPLIED';
   recipient?: string;
 }
 
@@ -103,6 +103,7 @@ export interface AnalyticsStatsDto {
   totalUnsubscribed?: number;
   totalBounced?: number;
   totalSpamComplaints?: number;
+  totalReplied?: number;
   openRate?: number;
   clickThroughRate?: number;
   clickToOpenRate?: number;
@@ -110,4 +111,5 @@ export interface AnalyticsStatsDto {
   bounceRate?: number;
   deliveryRate?: number;
   spamComplaintRate?: number;
+  replyRate?: number;
 }

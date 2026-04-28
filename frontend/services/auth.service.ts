@@ -33,6 +33,7 @@ export const authService = {
     return response.data;
   },
   getOAuthUrl: async (provider: 'GOOGLE' | 'GITHUB'): Promise<{ url: string }> => {
-    return { url: `/oauth2/authorization/${provider.toLowerCase()}` };
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+    return { url: `${backendUrl}/oauth2/authorization/${provider.toLowerCase()}` };
   },
 };

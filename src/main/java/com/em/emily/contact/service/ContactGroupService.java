@@ -44,6 +44,14 @@ public class ContactGroupService {
         contactRepository.saveAll(selectedContacts);
     }
 
+    public ContactGroup updateGroup(UUID id, ContactGroup details) {
+        ContactGroup existing = groupRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Group not found"));
+        existing.setName(details.getName());
+        existing.setDescription(details.getDescription());
+        return groupRepository.save(existing);
+    }
+
     public void deleteGroup(UUID id) {
         groupRepository.deleteById(id);
     }

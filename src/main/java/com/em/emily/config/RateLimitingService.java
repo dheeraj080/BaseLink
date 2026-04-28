@@ -2,26 +2,35 @@ package com.em.emily.config;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.Refill;
+import io.github.bucket4j.distributed.ExpirationAfterWriteStrategy;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
+import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.lettuce.core.RedisClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class RateLimitingService {
 
-    // Store buckets in memory
-    private final Map<String, Bucket> cache = new ConcurrentHashMap<>();
+    private final ProxyManager<byte[]> proxyManager;
 
-    public Bucket resolveBucket(String key) {
-        return cache.computeIfAbsent(key, this::newBucket);
+    public RateLimitingService(@Value("${spring.data.redis.host:localhost}") String redisHost,
+                               @Value("${spring.data.redis.port:6379}") int redisPort) {
+        RedisClient redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
+        this.proxyManager = LettuceBasedProxyManager.builderFor(redisClient)
+                .withExpirationStrategy(ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofSeconds(10)))
+                .build();
     }
 
-    private Bucket newBucket(String key) {
-        // Example limit: 20 requests per minute
-        Bandwidth limit = Bandwidth.classic(20, Refill.greedy(20, Duration.ofMinutes(1)));
-        return Bucket.builder().addLimit(limit).build();
+    public Bucket resolveBucket(String key) {
+        BucketConfiguration configuration = BucketConfiguration.builder()
+                .addLimit(Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1))))
+                .build();
+
+        return proxyManager.builder().build(key.getBytes(), configuration);
     }
 }

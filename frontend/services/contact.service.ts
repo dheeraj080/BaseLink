@@ -56,6 +56,10 @@ export const groupService = {
     const response = await api.post<ContactGroup>('/groups', group);
     return response.data;
   },
+  update: async (id: string, group: ContactGroup): Promise<ContactGroup> => {
+    const response = await api.put<ContactGroup>(`/groups/${id}`, group);
+    return response.data;
+  },
   delete: async (id: string): Promise<void> => {
     await api.delete(`/groups/${id}`);
   },

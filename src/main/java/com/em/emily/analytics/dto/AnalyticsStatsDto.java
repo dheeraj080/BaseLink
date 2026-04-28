@@ -15,6 +15,7 @@ public class AnalyticsStatsDto {
     private long totalUnsubscribed;
     private long totalBounced;
     private long totalSpamComplaints;
+    private long totalReplied;
 
     // Rates (Percentages)
     private double openRate;
@@ -24,4 +25,5 @@ public class AnalyticsStatsDto {
     private double bounceRate;
     private double deliveryRate;
     private double spamComplaintRate;
+    private double replyRate;
 }

@@ -7,5 +7,6 @@ public enum EmailEventType {
     CLICKED,
     UNSUBSCRIBED,
     BOUNCED,
-    SPAM_COMPLAINT
+    SPAM_COMPLAINT,
+    REPLIED
 }

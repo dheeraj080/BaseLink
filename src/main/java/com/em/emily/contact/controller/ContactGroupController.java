@@ -37,6 +37,11 @@ public class ContactGroupController {
         return ResponseEntity.ok("Selected contacts added to group successfully.");
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<ContactGroup> update(@PathVariable UUID id, @RequestBody ContactGroup details) {
+        return ResponseEntity.ok(groupService.updateGroup(id, details));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         groupService.deleteGroup(id);

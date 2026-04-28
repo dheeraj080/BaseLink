@@ -47,6 +47,7 @@ public class AnalyticsService {
         long unsubscribed = repository.countDistinctEmailIdByEventType(EmailEventType.UNSUBSCRIBED);
         long bounced = repository.countDistinctEmailIdByEventType(EmailEventType.BOUNCED);
         long spam = repository.countDistinctEmailIdByEventType(EmailEventType.SPAM_COMPLAINT);
+        long replied = repository.countDistinctEmailIdByEventType(EmailEventType.REPLIED);
 
         double openRate = delivered > 0 ? ((double) opened / delivered) * 100 : 0.0;
         double ctr = sent > 0 ? ((double) clicked / sent) * 100 : 0.0;
@@ -55,6 +56,7 @@ public class AnalyticsService {
         double bounceRate = sent > 0 ? ((double) bounced / sent) * 100 : 0.0;
         double deliveryRate = sent > 0 ? ((double) delivered / sent) * 100 : 0.0;
         double spamComplaintRate = delivered > 0 ? ((double) spam / delivered) * 100 : 0.0;
+        double replyRate = delivered > 0 ? ((double) replied / delivered) * 100 : 0.0;
 
         // Round to 2 decimal places
         openRate = Math.round(openRate * 100.0) / 100.0;
@@ -64,6 +66,7 @@ public class AnalyticsService {
         bounceRate = Math.round(bounceRate * 100.0) / 100.0;
         deliveryRate = Math.round(deliveryRate * 100.0) / 100.0;
         spamComplaintRate = Math.round(spamComplaintRate * 100.0) / 100.0;
+        replyRate = Math.round(replyRate * 100.0) / 100.0;
 
         return AnalyticsStatsDto.builder()
                 .totalSent(sent)
@@ -73,6 +76,7 @@ public class AnalyticsService {
                 .totalUnsubscribed(unsubscribed)
                 .totalBounced(bounced)
                 .totalSpamComplaints(spam)
+                .totalReplied(replied)
                 .openRate(openRate)
                 .clickThroughRate(ctr)
                 .clickToOpenRate(ctor)
@@ -80,6 +84,7 @@ public class AnalyticsService {
                 .bounceRate(bounceRate)
                 .deliveryRate(deliveryRate)
                 .spamComplaintRate(spamComplaintRate)
+                .replyRate(replyRate)
                 .build();
     }
 }

@@ -26,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
         registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/v1/auth/**", "/api/v1/email/**");
+                .addPathPatterns("/api/**");
     }
 
     @Override

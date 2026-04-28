@@ -3,14 +3,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { contactService, groupService } from '@/services/contact.service';
 import { Contact, ContactGroup } from '@/types/api';
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Download, 
-  Upload, 
-  UserPlus, 
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  Download,
+  Upload,
+  UserPlus,
   Trash2,
   Boxes,
   Mail,
@@ -20,7 +20,9 @@ import {
   X,
   Smartphone,
   Info,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
@@ -28,13 +30,21 @@ import { cn, handleError, showSuccess } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
+import { analyticsService } from '@/services/analytics.service';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [totalReplies, setTotalReplies] = useState(0);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<ContactGroup[]>([]);
+  const [selectedGroupsForContact, setSelectedGroupsForContact] = useState<string[]>([]);
+  const [isClusterModalOpen, setIsClusterModalOpen] = useState(false);
+  const [editingCluster, setEditingCluster] = useState<ContactGroup | null>(null);
+  const [filterClusterId, setFilterClusterId] = useState<string>('all');
   const [isUploading, setIsUploading] = useState(false);
   const [importSummary, setImportSummary] = useState<{ success: number; total: number } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -43,10 +53,16 @@ export default function ContactsPage() {
 
   const fetchContacts = async () => {
     try {
-      const data = await contactService.getContacts();
-      setContacts(data);
+      const [contactsData, statsData, groupsData] = await Promise.all([
+        contactService.getContacts(),
+        analyticsService.getStats(),
+        groupService.list()
+      ]);
+      setContacts(contactsData);
+      setAvailableGroups(groupsData || []);
+      setTotalReplies(statsData?.totalReplied || 0);
     } catch (error) {
-      handleError(error, 'Failed to fetch contacts');
+      handleError(error, 'Failed to update index dependencies');
     } finally {
       setLoading(false);
     }
@@ -54,22 +70,28 @@ export default function ContactsPage() {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function loadData() {
       try {
-        const data = await contactService.getContacts();
+        const [contactsData, statsData, groupsData] = await Promise.all([
+          contactService.getContacts(),
+          analyticsService.getStats(),
+          groupService.list()
+        ]);
         if (isMounted) {
-          setContacts(data);
+          setContacts(contactsData);
+          setTotalReplies(statsData?.totalReplied || 0);
+          setAvailableGroups(groupsData || []);
           setLoading(false);
         }
       } catch (error) {
-        handleError(error, 'Failed to fetch contacts');
+        handleError(error, 'Failed to fetch core node indices');
         if (isMounted) setLoading(false);
       }
     }
 
     loadData();
-    
+
     return () => {
       isMounted = false;
     };
@@ -79,7 +101,7 @@ export default function ContactsPage() {
     try {
       await contactService.toggleSelection(id, !currentSelected);
       setContacts(contacts.map(c => c.id === id ? { ...c, selected: !currentSelected } : c));
-      
+
       const newSelected = new Set(selectedIds);
       if (!currentSelected) newSelected.add(id);
       else newSelected.delete(id);
@@ -104,8 +126,29 @@ export default function ContactsPage() {
 
     setLoading(true);
     try {
-      await contactService.createContact({ name, email, phoneNo, description });
-      showSuccess('Contact created successfully');
+      const groupsPayload = selectedGroupsForContact.map(id => ({ id }));
+      if (editingContact) {
+        await contactService.updateContact(editingContact.id!, {
+          name,
+          email,
+          phoneNo,
+          description,
+          selected: editingContact.selected || false,
+          groups: groupsPayload
+        });
+        showSuccess('Contact updated successfully');
+        setEditingContact(null);
+      } else {
+        await contactService.createContact({
+          name,
+          email,
+          phoneNo,
+          description,
+          selected: false,
+          groups: groupsPayload
+        });
+        showSuccess('Contact created successfully');
+      }
       setIsAddModalOpen(false);
       fetchContacts();
     } catch (error) {
@@ -120,7 +163,7 @@ export default function ContactsPage() {
     try {
       const ids = contacts.map(c => c.id!).filter(id => !!id);
       await contactService.bulkSelect({ contactIds: ids, selected: !allSelected });
-      
+
       if (allSelected) {
         setSelectedIds(new Set());
         setContacts(contacts.map(c => ({ ...c, selected: false })));
@@ -130,6 +173,27 @@ export default function ContactsPage() {
       }
     } catch (error) {
       handleError(error, 'Failed to perform bulk selection');
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${selectedIds.size} selected contacts? This action cannot be undone.`);
+    if (!confirmDelete) return;
+
+    try {
+      setLoading(true);
+      await Promise.all(
+        Array.from(selectedIds).map(id => contactService.deleteContact(id))
+      );
+      showSuccess(`${selectedIds.size} contacts deleted successfully`);
+      setSelectedIds(new Set());
+      fetchContacts();
+    } catch (error) {
+      handleError(error, 'Failed to delete selected contacts');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -155,7 +219,7 @@ export default function ContactsPage() {
 
     setLastFile(file);
     setIsUploading(true);
-    
+
     try {
       // Estimate total lines (excluding header)
       const text = await file.text();
@@ -163,7 +227,7 @@ export default function ContactsPage() {
       const totalCount = Math.max(0, lines.length - 1); // Subtract header
 
       const data = await contactService.uploadCsv(file);
-      
+
       setImportSummary({
         success: data.length,
         total: totalCount
@@ -186,22 +250,32 @@ export default function ContactsPage() {
     }
   };
 
-  const filteredContacts = Array.isArray(contacts) 
-    ? contacts.filter(c => 
-        c.name?.toLowerCase().includes(search.toLowerCase()) || 
-        c.email?.toLowerCase().includes(search.toLowerCase())
-      )
+  const filteredContacts = Array.isArray(contacts)
+    ? contacts.filter(c => {
+        const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) ||
+                             c.email?.toLowerCase().includes(search.toLowerCase());
+        
+        if (filterClusterId === 'all') return matchesSearch;
+        const belongsToCluster = (c.groups || []).some(g => g.id === filterClusterId);
+        return matchesSearch && belongsToCluster;
+      })
     : [];
 
   return (
     <div className="space-y-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <motion.div
-           initial={{ opacity: 0, y: -10 }}
-           animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
         >
           <h1 className="text-3xl font-bold text-white tracking-tighter">Registry Nodes</h1>
-          <p className="text-text-secondary text-sm mt-2 font-medium">Build and manage your professional audience protocols.</p>
+          <div className="flex flex-wrap items-center gap-4 mt-2">
+            <p className="text-text-secondary text-sm font-medium">Build and manage your professional audience protocols.</p>
+            <div className="flex items-center gap-2 bg-white/5 border border-white/5 px-3 py-1 rounded-full text-[10px] text-green-400 font-bold uppercase tracking-widest">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>{totalReplies} Total Replies</span>
+            </div>
+          </div>
         </motion.div>
         <div className="flex items-center gap-4">
           <input
@@ -211,7 +285,7 @@ export default function ContactsPage() {
             onChange={handleFileUpload}
             accept=".csv"
           />
-          <Button 
+          <Button
             id="upload-contacts"
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
@@ -219,42 +293,37 @@ export default function ContactsPage() {
             className="h-12 px-8 font-bold uppercase tracking-widest text-[10px] rounded-full"
             leftIcon={!isUploading && <Upload className="w-4 h-4" />}
           >
-            Import Core
+            Import CSV
           </Button>
-          <Button 
+          <Button
             id="cluster-contacts"
             variant="ghost"
-            onClick={async () => {
-              const name = prompt("Enter a label for this deployment cluster:");
-              if (!name) return;
-              try {
-                const group = await groupService.create({ name });
-                await groupService.addSelected(group.id!);
-                showSuccess(`Cluster "${name}" initialized with active markers.`);
-                fetchContacts();
-              } catch (e) {
-                handleError(e, "Cluster initialization failed.");
-              }
+            onClick={() => {
+              setEditingCluster(null);
+              setIsClusterModalOpen(true);
             }}
-            disabled={selectedIds.size === 0}
             className="h-12 px-8 font-bold uppercase tracking-widest text-[10px] rounded-full border border-white/5 hover:border-white/10"
             leftIcon={<Boxes className="w-4 h-4" />}
           >
-            Cluster Marked
+            Cluster Manager
           </Button>
-          
-          <Button 
+
+          <Button
             id="add-contact"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setEditingContact(null);
+              setSelectedGroupsForContact([]);
+              setIsAddModalOpen(true);
+            }}
             className="h-12 px-8 font-bold uppercase tracking-widest text-[10px] rounded-full"
             leftIcon={<Plus className="w-4 h-4" />}
           >
-            Create Node
+            Add Contact
           </Button>
         </div>
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -271,14 +340,31 @@ export default function ContactsPage() {
             />
           </div>
           <div className="flex items-center gap-4 w-full md:w-auto">
-            <Button variant="ghost" size="sm" className="text-[10px] uppercase tracking-widest font-bold" leftIcon={<Filter className="w-4 h-4" />}>
-              Matrix Filter
-            </Button>
+            <div className="flex items-center gap-2 bg-surface-primary border border-border-color px-4 py-2 rounded-2xl h-12">
+              <Filter className="w-4 h-4 text-text-secondary" />
+              <select
+                value={filterClusterId}
+                onChange={(e) => setFilterClusterId(e.target.value)}
+                className="bg-transparent text-[10px] font-bold text-white uppercase tracking-widest outline-none border-none cursor-pointer pr-4"
+              >
+                <option value="all" className="bg-bg-primary text-white">All Clusters</option>
+                {availableGroups.map((group) => (
+                  <option key={group.id} value={group.id} className="bg-bg-primary text-white">
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             {selectedIds.size > 0 && (
               <motion.div initial={{ opacity: 0, x: 5 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-4">
                 <div className="h-8 w-px bg-border-color mx-2"></div>
                 <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em]">{selectedIds.size} Marked</span>
-                <button title="Delete" id="delete-selected" className="p-3 bg-bg-primary border border-border-color text-text-secondary hover:text-white hover:border-white/20 rounded-xl transition-all shadow-xl">
+                <button
+                  onClick={handleDeleteSelected}
+                  title="Delete"
+                  id="delete-selected"
+                  className="p-3 bg-bg-primary border border-border-color text-text-secondary hover:text-white hover:border-white/20 rounded-xl transition-all shadow-xl"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </motion.div>
@@ -326,8 +412,8 @@ export default function ContactsPage() {
                 </tr>
               ) : (
                 filteredContacts.map((contact) => (
-                  <tr 
-                    key={contact.id} 
+                  <tr
+                    key={contact.id}
                     className={cn(
                       "group hover:bg-white/[0.02] transition-colors cursor-pointer",
                       selectedIds.has(contact.id!) ? "bg-white/[0.03]" : ""
@@ -344,7 +430,9 @@ export default function ContactsPage() {
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex flex-col">
-                        <span className="font-bold text-white text-[15px] tracking-tight">{contact.name || 'ANONYMOUS_NODE'}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-white text-[15px] tracking-tight">{contact.name || 'ANONYMOUS_NODE'}</span>
+                        </div>
                         <span className="text-[11px] font-bold uppercase tracking-widest text-text-secondary/50 mt-1">{contact.description || 'Null metadata'}</span>
                       </div>
                     </td>
@@ -372,9 +460,22 @@ export default function ContactsPage() {
                       </div>
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/60 whitespace-nowrap">
-                        {contact.createdAt ? format(new Date(contact.createdAt), 'MMM dd, yyyy') : '—'}
-                      </span>
+                      <div className="flex items-center justify-end gap-3">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary/60 whitespace-nowrap">
+                          {contact.createdAt ? format(new Date(contact.createdAt), 'MMM dd, yyyy') : '—'}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingContact(contact);
+                            setSelectedGroupsForContact((contact.groups || []).map(g => g.id!));
+                            setIsAddModalOpen(true);
+                          }}
+                          className="p-2.5 bg-white/5 border border-white/5 rounded-xl text-text-secondary hover:text-white hover:border-white/10 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -388,14 +489,14 @@ export default function ContactsPage() {
       <AnimatePresence>
         {isAddModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0" 
+              className="fixed inset-0"
               onClick={() => setIsAddModalOpen(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -404,37 +505,120 @@ export default function ContactsPage() {
               <form onSubmit={handleSaveContact}>
                 <div className="px-10 py-8 border-b border-border-color flex items-center justify-between bg-surface-primary/30">
                   <div>
-                    <h3 className="text-2xl font-bold text-white tracking-tight">Initialize Node</h3>
-                    <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-widest leading-none">Registry entry sequence</p>
+                    <h3 className="text-2xl font-bold text-white tracking-tight">
+                      {editingContact ? 'Modify Node' : 'Initialize Node'}
+                    </h3>
+                    <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-widest leading-none">
+                      {editingContact ? 'Update existing configuration' : 'Registry entry sequence'}
+                    </p>
                   </div>
-                  <button type="button" onClick={() => setIsAddModalOpen(false)} className="w-12 h-12 flex items-center justify-center bg-surface-primary border border-border-color hover:bg-white hover:text-bg-primary rounded-2xl transition-all shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      setEditingContact(null);
+                    }}
+                    className="w-12 h-12 flex items-center justify-center bg-surface-primary border border-border-color hover:bg-white hover:text-bg-primary rounded-2xl transition-all shadow-xl"
+                  >
                     <X className="w-6 h-6" />
                   </button>
                 </div>
 
                 <div className="p-12 space-y-10">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                    <Input label="Registry Name" name="name" placeholder="e.g. NODE_01" className="bg-surface-primary border-border-color rounded-2xl h-14" />
-                    <Input label="Telemetry" name="phoneNo" placeholder="+1..." className="bg-surface-primary border-border-color rounded-2xl h-14" />
+                    <Input
+                      label="Registry Name"
+                      name="name"
+                      placeholder="e.g. NODE_01"
+                      defaultValue={editingContact?.name || ''}
+                      className="bg-surface-primary border-border-color rounded-2xl h-14"
+                    />
+                    <Input
+                      label="Telemetry"
+                      name="phoneNo"
+                      placeholder="+1..."
+                      defaultValue={editingContact?.phoneNo || ''}
+                      className="bg-surface-primary border-border-color rounded-2xl h-14"
+                    />
                   </div>
-                  <Input label="Primary Protocol (Email)" name="email" type="email" placeholder="node@protocol.io" required className="bg-surface-primary border-border-color rounded-2xl h-14" />
+                  <Input
+                    label="Primary Protocol (Email)"
+                    name="email"
+                    type="email"
+                    placeholder="node@protocol.io"
+                    required
+                    defaultValue={editingContact?.email || ''}
+                    className="bg-surface-primary border-border-color rounded-2xl h-14"
+                  />
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">Assign Operational Categories</label>
+                    <div className="flex flex-wrap gap-2.5 p-4 bg-surface-primary border border-border-color rounded-2xl">
+                      {availableGroups.length === 0 ? (
+                        <span className="text-[10px] text-text-secondary italic">No standard category definitions found.</span>
+                      ) : (
+                        availableGroups.map((group) => {
+                          const isChecked = selectedGroupsForContact.includes(group.id!);
+                          return (
+                            <button
+                              type="button"
+                              key={group.id}
+                              onClick={() => {
+                                if (isChecked) {
+                                  setSelectedGroupsForContact(selectedGroupsForContact.filter(id => id !== group.id));
+                                } else {
+                                  setSelectedGroupsForContact([...selectedGroupsForContact, group.id!]);
+                                }
+                              }}
+                              className={cn(
+                                "text-[10px] font-bold px-3.5 py-2 rounded-full border transition-all uppercase tracking-widest",
+                                isChecked
+                                  ? "bg-white text-bg-primary border-white"
+                                  : "bg-surface-primary text-text-secondary border-border-color hover:text-white"
+                              )}
+                            >
+                              {group.name}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
                   <div className="space-y-3">
                     <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">Metadata Buffer</label>
-                    <textarea 
+                    <textarea
                       name="description"
-                      placeholder="Inject internal logic notes..." 
-                      rows={4} 
-                      className="w-full bg-surface-primary border border-border-color rounded-[32px] py-6 px-8 outline-none focus:border-white transition-all placeholder:text-border-color text-sm font-medium text-white resize-none"
+                      placeholder="Inject internal logic notes..."
+                      rows={3}
+                      defaultValue={editingContact?.description || ''}
+                      className="w-full bg-surface-primary border border-border-color rounded-[24px] py-4 px-6 outline-none focus:border-white transition-all placeholder:text-border-color text-xs font-medium text-white resize-none"
                     ></textarea>
                   </div>
                 </div>
 
                 <div className="px-10 py-8 border-t border-border-color flex items-center gap-5 bg-surface-primary/30">
-                  <Button id="cancel-add" variant="secondary" fullWidth type="button" onClick={() => setIsAddModalOpen(false)} className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]">
+                  <Button
+                    id="cancel-add"
+                    variant="secondary"
+                    fullWidth
+                    type="button"
+                    onClick={() => {
+                      setIsAddModalOpen(false);
+                      setEditingContact(null);
+                    }}
+                    className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]"
+                  >
                     Abort
                   </Button>
-                  <Button id="confirm-add" fullWidth type="submit" disabled={loading} leftIcon={loading && <Loader2 className="w-5 h-5 animate-spin" />} className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]">
-                    Initialize Core
+                  <Button
+                    id="confirm-add"
+                    fullWidth
+                    type="submit"
+                    disabled={loading}
+                    leftIcon={loading && <Loader2 className="w-5 h-5 animate-spin" />}
+                    className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]"
+                  >
+                    {editingContact ? 'Commit Update' : 'Initialize Core'}
                   </Button>
                 </div>
               </form>
@@ -446,14 +630,14 @@ export default function ContactsPage() {
       <AnimatePresence>
         {showImportModal && importSummary && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0" 
+              className="fixed inset-0"
               onClick={() => setShowImportModal(false)}
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
@@ -497,7 +681,7 @@ export default function ContactsPage() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="p-6 bg-white/5 border border-white/10 rounded-[24px] flex items-start gap-4">
                   <Info className="w-6 h-6 text-white shrink-0 mt-0.5" />
                   <div>
@@ -518,6 +702,185 @@ export default function ContactsPage() {
                     Retry Protocol
                   </Button>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Cluster Management Modal */}
+      <AnimatePresence>
+        {isClusterModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/95 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0"
+              onClick={() => setIsClusterModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-bg-primary border border-border-color rounded-[40px] w-full max-w-4xl shadow-modal relative z-10 overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="px-10 py-8 border-b border-border-color flex items-center justify-between bg-surface-primary/30">
+                <div>
+                  <h3 className="text-2xl font-bold text-white tracking-tight">Clusters</h3>
+                  <p className="text-[10px] font-bold text-text-secondary mt-1 uppercase tracking-widest leading-none">Categorization & logical segmentation</p>
+                </div>
+                <button
+                  onClick={() => setIsClusterModalOpen(false)}
+                  className="w-12 h-12 flex items-center justify-center bg-surface-primary border border-border-color hover:bg-white hover:text-bg-primary rounded-2xl transition-all shadow-xl"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 p-10 overflow-y-auto space-y-10">
+                {/* Active Clusters List */}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em]">Active Clusters</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {availableGroups.map((group) => (
+                      <div
+                        key={group.id}
+                        className={cn(
+                          "p-6 bg-surface-primary border rounded-[24px] flex items-center justify-between transition-all group",
+                          editingCluster?.id === group.id ? "border-white" : "border-border-color hover:border-white/10"
+                        )}
+                      >
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          <span className="text-sm font-bold text-white truncate">{group.name}</span>
+                          <span className="text-[10px] text-text-secondary truncate font-medium">{group.description || 'No descriptor notes.'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingCluster(group)}
+                            className="p-2.5 bg-bg-primary border border-border-color text-text-secondary hover:text-white rounded-xl transition-all"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm("Execute cluster termination sequence?")) {
+                                try {
+                                  await groupService.delete(group.id!);
+                                  showSuccess(`Cluster deleted.`);
+                                  fetchContacts();
+                                } catch (e) {
+                                  handleError(e, "Termination aborted.");
+                                }
+                              }
+                            }}
+                            className="p-2.5 bg-bg-primary border border-border-color text-text-secondary hover:text-red-500 rounded-xl transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {availableGroups.length === 0 && (
+                      <span className="text-xs text-text-secondary italic">No configured clusters.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="h-px bg-border-color"></div>
+
+                {/* Form Section */}
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const formData = new FormData(form);
+                    const name = formData.get('clusterName') as string;
+                    const description = formData.get('clusterDesc') as string;
+
+                    if (!name) return handleError(new Error("Header required."));
+                    setLoading(true);
+
+                    try {
+                      if (editingCluster) {
+                        await groupService.update(editingCluster.id!, { name, description });
+                        showSuccess("Cluster modifications committed.");
+                      } else {
+                        const newCluster = await groupService.create({ name, description });
+                        if (selectedIds.size > 0) {
+                          await groupService.addSelected(newCluster.id!);
+                          showSuccess(`Cluster mapped with ${selectedIds.size} nodes.`);
+                        } else {
+                          showSuccess("Cluster mapped successfully.");
+                        }
+                      }
+                      setEditingCluster(null);
+                      form.reset();
+                      fetchContacts();
+                    } catch (e) {
+                      handleError(e, "Mapping failed.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="space-y-6 bg-surface-primary/20 p-8 rounded-[32px] border border-border-color/50"
+                >
+                  <h4 className="text-[10px] font-bold text-white uppercase tracking-[0.2em]">
+                    {editingCluster ? 'Modify Target Cluster' : 'Provision New Cluster'}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">Cluster Identifier</label>
+                      <input
+                        name="clusterName"
+                        key={editingCluster?.id || 'new'}
+                        placeholder="e.g. MARKETING_SEQUENCES"
+                        required
+                        defaultValue={editingCluster?.name || ''}
+                        className="w-full bg-surface-primary border border-border-color rounded-2xl h-14 px-6 outline-none focus:border-white transition-all text-sm text-white mt-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">Logical Scope</label>
+                      <input
+                        name="clusterDesc"
+                        key={(editingCluster?.id || 'new') + '-desc'}
+                        placeholder="Provide tracking scope parameters..."
+                        defaultValue={editingCluster?.description || ''}
+                        className="w-full bg-surface-primary border border-border-color rounded-2xl h-14 px-6 outline-none focus:border-white transition-all text-sm text-white mt-2"
+                      />
+                    </div>
+                  </div>
+
+                  {selectedIds.size > 0 && !editingCluster && (
+                    <div className="p-4 bg-white/5 border border-white/5 rounded-2xl flex items-center gap-3">
+                      <CheckSquare className="w-4 h-4 text-white" />
+                      <span className="text-[10px] text-text-secondary font-bold uppercase tracking-widest">
+                        Will automatically assign {selectedIds.size} marked nodes.
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 justify-end pt-2">
+                    {editingCluster && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => setEditingCluster(null)}
+                        className="h-12 px-6 rounded-full font-bold uppercase tracking-widest text-[10px]"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      leftIcon={loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      className="h-12 px-8 rounded-full font-bold uppercase tracking-widest text-[10px]"
+                    >
+                      {editingCluster ? 'Confirm Changes' : 'Initialize Cluster'}
+                    </Button>
+                  </div>
+                </form>
               </div>
             </motion.div>
           </div>

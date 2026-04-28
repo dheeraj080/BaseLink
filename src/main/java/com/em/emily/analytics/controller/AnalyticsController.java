@@ -53,4 +53,10 @@ public class AnalyticsController {
         analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.UNSUBSCRIBED, "unknown");
         return ResponseEntity.ok("You have been unsubscribed successfully.");
     }
+
+    @GetMapping("/track/reply/{emailId}")
+    public ResponseEntity<String> trackReply(@PathVariable Long emailId, @RequestParam String recipient) {
+        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.REPLIED, recipient);
+        return ResponseEntity.ok("Reply registered successfully.");
+    }
 }
