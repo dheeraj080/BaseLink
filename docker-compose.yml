@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  email-db:
+    image: postgres:latest
+    container_name: email-db
+    environment:
+      POSTGRES_DB: email_db
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5001:5432"
+    networks:
+      - email-net
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d email_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  email-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: email-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - email-net
+
+  email-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: email-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+    depends_on:
+      email-db:
+        condition: service_healthy
+      email-rabbitmq:
+        condition: service_started
+    networks:
+      - email-net
+
+networks:
+  email-net:
+    driver: bridge
+
+volumes:
+  pgdata:
