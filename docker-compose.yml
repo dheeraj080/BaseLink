@@ -45,6 +45,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: email-backend
+    # Explicitly set DNS to bypass host/VPN restrictions
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     ports:
       - "5000:5000"
     env_file:

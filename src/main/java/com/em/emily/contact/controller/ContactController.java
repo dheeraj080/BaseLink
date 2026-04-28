@@ -105,18 +105,32 @@ public class ContactController {
             @RequestBody com.em.emily.email.EmailRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
 
-        List<Contact> selectedContacts = contactService.getSelectedContacts(principal.id());
+        System.out.println("DEBUG: broadcastToSelected called!");
+        System.out.println("DEBUG: request payload -> " + request);
 
-        if (selectedContacts.isEmpty()) {
-            return ResponseEntity.badRequest().body("No contacts selected for this user.");
+        List<String> recipients = request.to();
+        System.out.println("DEBUG: Recipients list extracted -> " + recipients);
+
+        if (recipients == null || recipients.isEmpty()) {
+            System.out.println("DEBUG: No explicit recipients provided. Attempting to fall back to selected contacts...");
+            List<Contact> selectedContacts = contactService.getSelectedContacts(principal.id());
+            System.out.println("DEBUG: Database selected contacts count -> " + (selectedContacts != null ? selectedContacts.size() : 0));
+            
+            if (selectedContacts == null || selectedContacts.isEmpty()) {
+                System.out.println("DEBUG: Fallback failed. Both payload and database recipients are EMPTY. Returning 400.");
+                return ResponseEntity.badRequest().body("No recipients specified and no contacts selected for this user.");
+            }
+            recipients = selectedContacts.stream().map(Contact::getEmail).toList();
         }
 
-        for (Contact contact : selectedContacts) {
+        System.out.println("DEBUG: Processing broadcast for " + recipients.size() + " total recipients.");
+
+        for (String email : recipients) {
             com.em.emily.email.EmailRequest message = new com.em.emily.email.EmailRequest(
-                    List.of(contact.getEmail()),
+                    List.of(email),
                     request.cc(),
                     request.bcc(),
-                    null,
+                    request.replyTo(),
                     request.subject(),
                     request.body()
             );
@@ -128,7 +142,8 @@ public class ContactController {
             );
         }
 
-        return ResponseEntity.accepted().body("Broadcasting to " + selectedContacts.size() + " contacts.");
+        System.out.println("DEBUG: Successfully queued messages. Returning 202.");
+        return ResponseEntity.accepted().body("Broadcasting to " + recipients.size() + " contacts.");
     }
 
     @DeleteMapping("/{id}")

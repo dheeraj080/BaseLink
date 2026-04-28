@@ -121,14 +121,26 @@ public class ContactService {
         contactRepository.save(contact);
     }
 
-    @Cacheable(value = "contacts", key = "#userId")
+    @Transactional
     public List<Contact> getAllUserContacts(UUID userId) {
-        return contactRepository.findByUserId(userId);
+        List<Contact> contacts = contactRepository.findByUserId(userId);
+        contacts.forEach(contact -> {
+            if (contact.getGroups() != null) {
+                contact.getGroups().size();
+            }
+        });
+        return contacts;
     }
 
-    @Cacheable(value = "selected_contacts", key = "#userId")
+    @Transactional
     public List<Contact> getSelectedContacts(UUID userId) {
-        return contactRepository.findByUserIdAndSelected(userId, true);
+        List<Contact> contacts = contactRepository.findByUserIdAndSelected(userId, true);
+        contacts.forEach(contact -> {
+            if (contact.getGroups() != null) {
+                contact.getGroups().size();
+            }
+        });
+        return contacts;
     }
 
     @Caching(evict = {

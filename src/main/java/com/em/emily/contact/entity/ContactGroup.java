@@ -35,7 +35,7 @@ public class ContactGroup {
 
     @ManyToMany(mappedBy = "groups")
     @Builder.Default
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties("groups")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Set<Contact> contacts = new HashSet<>();
 
     @Builder.Default

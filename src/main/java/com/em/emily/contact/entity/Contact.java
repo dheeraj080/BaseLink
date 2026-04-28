@@ -46,7 +46,7 @@ public class Contact {
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private boolean selected = false;
 
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "contact_group_members",
             joinColumns = @JoinColumn(name = "contact_id"),
