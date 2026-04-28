@@ -55,24 +55,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Jws<Claims> parsed = jwtService.parse(token);
             String userId = jwtService.getUserId(token).toString();
 
-            if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                userRepository.findById(UUID.fromString(userId)).ifPresent(user -> {
-                    if (user.isEnabled() && user.isAccountNonLocked()) {
+            userRepository.findById(UUID.fromString(userId)).ifPresent(user -> {
+                if (user.isEnabled() && user.isAccountNonLocked()) {
 
-                        // NEW: Create the public principal instead of passing the entity
-                        UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail());
+                    // NEW: Create the public principal instead of passing the entity
+                    UserPrincipal principal = new UserPrincipal(user.getId(), user.getEmail());
 
-                        UsernamePasswordAuthenticationToken auth =
-                                new UsernamePasswordAuthenticationToken(
-                                        principal, // Use the Record here
-                                        null,
-                                        user.getAuthorities());
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    principal, // Use the Record here
+                                    null,
+                                    user.getAuthorities());
 
-                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(auth);
-                    }
-                });
-            }
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            });
 
             filterChain.doFilter(request, response);
 
