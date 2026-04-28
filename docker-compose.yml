@@ -47,7 +47,10 @@ services:
     container_name: email-backend
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
+      - REDIS_HOST=email-redis
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - RABBITMQ_USER=${RABBITMQ_USER:-guest}
@@ -62,6 +65,8 @@ services:
       email-db:
         condition: service_healthy
       email-rabbitmq:
+        condition: service_started
+      email-redis:
         condition: service_started
     networks:
       - email-net
