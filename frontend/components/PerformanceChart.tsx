@@ -56,26 +56,17 @@ export function PerformanceChart() {
             };
           });
 
-          // Pad out the chart with at least 5 baseline nodes if logs are sparse
-          if (formatted.length < 5) {
-            const pad = [
-              { week: 'Apr 24', sent: 5, opens: 3, clicks: 1, unsubscribed: 0, openRate: 60.0, clickRate: 20.0 },
-              { week: 'Apr 25', sent: 8, opens: 5, clicks: 2, unsubscribed: 0, openRate: 62.5, clickRate: 25.0 },
-              { week: 'Apr 26', sent: 4, opens: 2, clicks: 0, unsubscribed: 0, openRate: 50.0, clickRate: 0.0 },
-              { week: 'Apr 27', sent: 12, opens: 8, clicks: 3, unsubscribed: 1, openRate: 66.7, clickRate: 25.0 }
-            ];
-            setTrendData([...pad, ...formatted]);
+          // Use formatted data directly. Pad baseline zeroes if single points exist
+          if (formatted.length === 1) {
+            setTrendData([
+              { week: 'Baseline', sent: 0, opens: 0, clicks: 0, unsubscribed: 0, openRate: 0, clickRate: 0 },
+              formatted[0]
+            ]);
           } else {
             setTrendData(formatted);
           }
         } else {
-          setTrendData([
-            { week: 'Apr 24', sent: 5, opens: 3, clicks: 1, unsubscribed: 0, openRate: 60.0, clickRate: 20.0 },
-            { week: 'Apr 25', sent: 8, opens: 5, clicks: 2, unsubscribed: 0, openRate: 62.5, clickRate: 25.0 },
-            { week: 'Apr 26', sent: 4, opens: 2, clicks: 0, unsubscribed: 0, openRate: 50.0, clickRate: 0.0 },
-            { week: 'Apr 27', sent: 12, opens: 8, clicks: 3, unsubscribed: 1, openRate: 66.7, clickRate: 25.0 },
-            { week: 'Apr 28', sent: 6, opens: 4, clicks: 2, unsubscribed: 0, openRate: 66.7, clickRate: 33.3 }
-          ]);
+          setTrendData([]);
         }
       } catch (e) {
         console.error(e);
@@ -107,20 +98,16 @@ export function PerformanceChart() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-white"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6366f1]"></div>
               <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] leading-none">Sent</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-text-main"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#10b981]"></div>
               <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] leading-none">Opens</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-text-secondary"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]"></div>
               <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] leading-none">Clicks</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-border-color"></div>
-              <span className="text-[9px] font-bold text-text-secondary uppercase tracking-[0.2em] leading-none">Status</span>
             </div>
           </div>
 
@@ -153,74 +140,83 @@ export function PerformanceChart() {
       <div className="flex-1 w-full" style={{ height: '350px' }}>
         <ResponsiveContainer width="100%" height={350}>
           <LineChart data={trendData} margin={{ top: 20, right: 30, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="0" vertical={false} stroke="var(--color-border-color)" opacity={0.3} />
+            <defs>
+              <linearGradient id="colorSent" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorOpens" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
             <XAxis 
               dataKey="week" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'var(--color-text-secondary)', fontSize: 9, fontWeight: 700 }}
+              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 600 }}
               dy={15}
             />
             <YAxis 
               yAxisId="left"
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'var(--color-text-secondary)', fontSize: 9, fontWeight: 700 }}
-              label={{ value: 'THROUGHPUT', angle: -90, position: 'insideLeft', offset: 10, fill: 'var(--color-text-secondary)', fontSize: 8, fontWeight: 900, letterSpacing: '0.1em' }}
+              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 600 }}
             />
             <YAxis 
               yAxisId="right"
               orientation="right"
               axisLine={false} 
               tickLine={false} 
-              tick={{ fill: 'var(--color-text-secondary)', fontSize: 9, fontWeight: 700 }}
+              tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 600 }}
               domain={[0, 100]}
-              label={{ value: 'YIELD (%)', angle: 90, position: 'insideRight', offset: 10, fill: 'var(--color-text-secondary)', fontSize: 8, fontWeight: 900, letterSpacing: '0.1em' }}
             />
             <Tooltip
               contentStyle={{ 
-                backgroundColor: '#000000', 
-                border: '1px solid #333333', 
-                borderRadius: '16px',
-                fontSize: '10px',
+                backgroundColor: 'rgba(10, 10, 12, 0.85)', 
+                backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255, 255, 255, 0.08)', 
+                borderRadius: '24px',
+                fontSize: '11px',
                 color: '#ffffff',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-                padding: '16px'
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                padding: '20px'
               }}
-              itemStyle={{ fontSize: '10px', padding: '4px 0', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-              labelStyle={{ color: '#a3a3a3', fontWeight: '900', marginBottom: '12px', borderBottom: '1px solid #333333', paddingBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
-              cursor={{ stroke: '#333333', strokeWidth: 1 }}
+              itemStyle={{ fontSize: '11px', padding: '6px 0', fontWeight: 'bold' }}
+              labelStyle={{ color: 'rgba(255,255,255,0.5)', fontWeight: 'bold', marginBottom: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}
+              cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
             />
             <Line 
               yAxisId="left"
               type="monotone" 
               dataKey="sent" 
-              name="Sent"
-              stroke="#ffffff" 
-              strokeWidth={4} 
-              dot={{ r: 0 }}
-              activeDot={{ r: 8, fill: '#ffffff', stroke: '#000000', strokeWidth: 3 }}
+              name="Sent Volume"
+              stroke="#6366f1" 
+              strokeWidth={3} 
+              dot={{ r: 4, strokeWidth: 2, fill: '#0a0a0c' }}
+              activeDot={{ r: 7, fill: '#6366f1', stroke: '#ffffff', strokeWidth: 2 }}
             />
             <Line 
               yAxisId="left"
               type="monotone" 
               dataKey="opens" 
-              name="Opened"
-              stroke="#e5e5e5" 
+              name="Open Volume"
+              stroke="#10b981" 
               strokeWidth={3} 
-              strokeDasharray="8 8"
-              dot={{ r: 0 }}
-              activeDot={{ r: 6, fill: '#e5e5e5', stroke: '#000000', strokeWidth: 2 }}
+              dot={{ r: 4, strokeWidth: 2, fill: '#0a0a0c' }}
+              activeDot={{ r: 7, fill: '#10b981', stroke: '#ffffff', strokeWidth: 2 }}
             />
             <Line 
               yAxisId="left"
               type="monotone" 
               dataKey="clicks" 
-              name="Clicked"
-              stroke="#a3a3a3" 
+              name="Click Rate"
+              stroke="#f59e0b" 
               strokeWidth={2} 
-              dot={{ r: 0 }}
-              activeDot={{ r: 6, fill: '#a3a3a3', stroke: '#000000', strokeWidth: 2 }}
+              strokeDasharray="5 5"
+              dot={false}
+              activeDot={{ r: 5, fill: '#f59e0b' }}
             />
             <Line 
               yAxisId="right"

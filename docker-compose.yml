@@ -55,6 +55,7 @@ services:
       - .env
     environment:
       - REDIS_HOST=email-redis
+      - JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - RABBITMQ_USER=${RABBITMQ_USER:-guest}

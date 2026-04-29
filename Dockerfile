@@ -23,7 +23,6 @@ COPY --from=builder --chown=spring:spring /app/target/extracted/application/ ./
 
 USER spring:spring
 
-# Updated to 5000 to match Compose file
 EXPOSE 5000
 
 ENTRYPOINT ["java", \
