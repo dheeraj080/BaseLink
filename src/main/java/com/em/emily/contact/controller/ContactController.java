@@ -132,7 +132,8 @@ public class ContactController {
                     request.bcc(),
                     request.replyTo(),
                     request.subject(),
-                    request.body()
+                    request.body(),
+                    principal.id()
             );
 
             rabbitTemplate.convertAndSend(

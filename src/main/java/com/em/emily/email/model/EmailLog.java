@@ -22,6 +22,9 @@ public class EmailLog {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id")
+    private java.util.UUID userId;
+
     @NotNull(message = "Recipient cannot be null")
     @Column(nullable = false, length = 500)
     private String recipient;

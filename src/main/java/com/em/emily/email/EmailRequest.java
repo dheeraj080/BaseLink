@@ -21,8 +21,21 @@ public record EmailRequest(
         String subject,
 
         @NotBlank(message = "Body cannot be empty")
-        String body
+        String body,
+
+        java.util.UUID userId
 ) implements Serializable {
+
+    public EmailRequest(
+            java.util.List<String> to,
+            java.util.List<String> cc,
+            java.util.List<String> bcc,
+            String replyTo,
+            String subject,
+            String body
+    ) {
+        this(to, cc, bcc, replyTo, subject, body, null);
+    }
 
         // SerialVersionUID is allowed inside the record block
         private static final long serialVersionUID = 1L;

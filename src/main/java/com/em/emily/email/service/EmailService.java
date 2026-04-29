@@ -43,6 +43,11 @@ public class EmailService {
 
     @Async("taskExecutor")
     public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body) {
+        sendEmail(to, cc, bcc, replyTo, subject, body, null);
+    }
+
+    @Async("taskExecutor")
+    public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body, java.util.UUID userId) {
         // 1. Validation
         if (to == null || to.isEmpty()) {
             log.error("Cannot send email: Recipient list is empty.");
@@ -53,6 +58,7 @@ public class EmailService {
         logEntry.setRecipient(String.join(",", to));
         logEntry.setSubject(subject);
         logEntry.setStatus(EmailStatus.PENDING);
+        logEntry.setUserId(userId);
         logEntry = emailRepository.save(logEntry);
 
         try {

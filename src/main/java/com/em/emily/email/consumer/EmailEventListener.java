@@ -25,7 +25,8 @@ public class EmailEventListener {
                     request.bcc(),
                     request.replyTo(),
                     request.subject(),
-                    request.body()
+                    request.body(),
+                    request.userId()
             );
             log.info("Successfully processed scheduled email.");
         } catch (Exception e) {

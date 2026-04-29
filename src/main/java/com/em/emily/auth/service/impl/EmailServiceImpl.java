@@ -26,7 +26,8 @@ public class EmailServiceImpl implements EmailService {
                     null,
                     null,
                     subject,
-                    body
+                    body,
+                    null
             );
 
             rabbitTemplate.convertAndSend(
@@ -37,6 +38,7 @@ public class EmailServiceImpl implements EmailService {
             log.info("✅ Auth email queued successfully for: {}", to);
         } catch (Exception e) {
             log.error("❌ Failed to queue auth email for {}: {}", to, e.getMessage());
+            throw new RuntimeException("Failed to send verification email", e);
         }
     }
 }

@@ -52,9 +52,12 @@ public class EmailController {
     }
 
     @GetMapping("/logs")
-    public ResponseEntity<List<EmailLog>> getEmailLogs() {
-        // Log query should ideally be filtered by userId too, but for now we'll just protect the endpoint
-        return ResponseEntity.ok(emailRepository.findAll());
+    public ResponseEntity<List<EmailLog>> getEmailLogs(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+        return ResponseEntity.ok(emailRepository.findByUserId(principal.id()));
     }
 
     @PostMapping("/send")

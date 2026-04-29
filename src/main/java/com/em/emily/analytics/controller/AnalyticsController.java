@@ -20,8 +20,12 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
 
     @GetMapping("/stats")
-    public ResponseEntity<AnalyticsStatsDto> getStats() {
-        return ResponseEntity.ok(analyticsService.getStats());
+    public ResponseEntity<AnalyticsStatsDto> getStats(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.ok(AnalyticsStatsDto.builder().build());
+        }
+        return ResponseEntity.ok(analyticsService.getStats(principal.id()));
     }
 
     @PostMapping("/events")

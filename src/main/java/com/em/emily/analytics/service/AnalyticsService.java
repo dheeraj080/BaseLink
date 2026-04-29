@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 public class AnalyticsService {
 
     private final EmailAnalyticsEventRepository repository;
+    private final com.em.emily.email.repository.EmailRepository emailRepository;
 
     @Transactional
     public void recordEvent(Long emailId, EmailEventType eventType, String recipient) {
@@ -39,15 +40,24 @@ public class AnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public AnalyticsStatsDto getStats() {
-        long sent = repository.countDistinctEmailIdByEventType(EmailEventType.SENT);
-        long delivered = repository.countDistinctEmailIdByEventType(EmailEventType.DELIVERED);
-        long opened = repository.countDistinctEmailIdByEventType(EmailEventType.OPENED);
-        long clicked = repository.countDistinctEmailIdByEventType(EmailEventType.CLICKED);
-        long unsubscribed = repository.countDistinctEmailIdByEventType(EmailEventType.UNSUBSCRIBED);
-        long bounced = repository.countDistinctEmailIdByEventType(EmailEventType.BOUNCED);
-        long spam = repository.countDistinctEmailIdByEventType(EmailEventType.SPAM_COMPLAINT);
-        long replied = repository.countDistinctEmailIdByEventType(EmailEventType.REPLIED);
+    public AnalyticsStatsDto getStats(java.util.UUID userId) {
+        if (userId == null) {
+            return AnalyticsStatsDto.builder().build();
+        }
+
+        java.util.List<Long> emailIds = emailRepository.findIdsByUserId(userId);
+        if (emailIds == null || emailIds.isEmpty()) {
+            return AnalyticsStatsDto.builder().build();
+        }
+
+        long sent = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.SENT, emailIds);
+        long delivered = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.DELIVERED, emailIds);
+        long opened = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.OPENED, emailIds);
+        long clicked = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.CLICKED, emailIds);
+        long unsubscribed = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.UNSUBSCRIBED, emailIds);
+        long bounced = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.BOUNCED, emailIds);
+        long spam = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.SPAM_COMPLAINT, emailIds);
+        long replied = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.REPLIED, emailIds);
 
         double openRate = delivered > 0 ? ((double) opened / delivered) * 100 : 0.0;
         double ctr = sent > 0 ? ((double) clicked / sent) * 100 : 0.0;

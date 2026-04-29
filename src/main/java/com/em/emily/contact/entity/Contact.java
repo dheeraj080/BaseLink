@@ -15,7 +15,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "contacts")
+@Table(name = "contacts", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"user_id", "email"})
+})
 public class Contact {
 
     @Id
@@ -30,7 +32,7 @@ public class Contact {
     @Email
     @ToString.Include
     @NotNull(message = "Email address is required")
-    @Column(nullable = false, unique = true, length = 255)
+    @Column(nullable = false, length = 255)
     private String email;
 
     @Column(length = 15)
