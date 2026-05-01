@@ -16,6 +16,14 @@ public class RateLimitInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        String uri = request.getRequestURI();
+        RateLimitingService.BucketType type = RateLimitingService.BucketType.GENERAL;
+
+        // Apply strict rate limiting to sensitive authentication endpoints
+        if (uri.contains("/auth/activate") || uri.contains("/auth/reset-password") || uri.contains("/auth/login")) {
+            type = RateLimitingService.BucketType.AUTH_TOTP;
+        }
+
         String key;
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
         
@@ -25,7 +33,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             key = request.getRemoteAddr(); // Limit by IP
         }
 
-        Bucket bucket = rateLimitingService.resolveBucket(key);
+        Bucket bucket = rateLimitingService.resolveBucket(key, type);
 
         if (bucket.tryConsume(1)) {
             return true; // Allowed
@@ -34,7 +42,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         // Rate limit exceeded
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setContentType("application/json");
-        response.getWriter().write("{\"error\": \"Too many requests\", \"message\": \"Please try again later.\"}");
+        response.getWriter().write("{\"error\": \"Too many requests\", \"message\": \"Rate limit exceeded for " + type.name() + ". Please try again later.\"}");
         return false;
     }
 }

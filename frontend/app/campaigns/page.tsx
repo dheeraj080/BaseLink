@@ -24,12 +24,13 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { cn, handleError, showSuccess } from '@/lib/utils';
+import { cn, handleError, showSuccess, getTimezoneOffset } from '@/lib/utils';
 import { CustomSelect } from '@/components/ui/Select';
 import { Composer } from '@/components/campaigns/Composer';
 import { LayoutBlueprints } from '@/components/campaigns/LayoutBlueprints';
 import { TelemetryLogSidebar } from '@/components/campaigns/TelemetryLogSidebar';
 import { TelemetryLogTable } from '@/components/campaigns/TelemetryLogTable';
+import { ScheduledQueueTable } from '@/components/campaigns/ScheduledQueueTable';
 
 export default function CampaignsPage() {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -40,9 +41,10 @@ export default function CampaignsPage() {
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [logs, setLogs] = useState<EmailLog[]>([]);
-  const [clusters, setClusters] = useState<ContactGroup[]>([]);
+  const [clusters, setContactGroups] = useState<ContactGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'compose' | 'history'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'queue'>('compose');
+  const [scheduledJobs, setScheduledJobs] = useState<any[]>([]);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -50,21 +52,26 @@ export default function CampaignsPage() {
 
   const [showScheduler, setShowScheduler] = useState(false);
   const [scheduledTime, setScheduledTime] = useState('');
+  const [timezone, setTimezone] = useState('UTC');
+  const [isMarketing, setIsMarketing] = useState(true);
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const fetchData = async () => {
     try {
-      const [cons, temps, history, clusts, allC] = await Promise.all([
+      const [cons, temps, history, clusts, allC, jobs] = await Promise.all([
         contactService.getContacts(true),
         emailService.listTemplates(),
         emailService.getLogs(),
         groupService.list(),
         contactService.getContacts(false),
+        emailService.getScheduledJobs(),
       ]);
       setSelectedContacts(Array.isArray(cons) ? cons : []);
       setTemplates(Array.isArray(temps) ? temps : []);
       setLogs(Array.isArray(history) ? history : []);
-      setClusters(Array.isArray(clusts) ? clusts : []);
+      setContactGroups(Array.isArray(clusts) ? clusts : []);
       setAllContacts(Array.isArray(allC) ? allC : []);
+      setScheduledJobs(Array.isArray(jobs) ? jobs : []);
 
     } catch (error) {
       handleError(error, 'Failed to fetch campaign data');
@@ -78,19 +85,21 @@ export default function CampaignsPage() {
 
     async function loadData() {
       try {
-        const [cons, temps, history, clusts, allC] = await Promise.all([
+        const [cons, temps, history, clusts, allC, jobs] = await Promise.all([
           contactService.getContacts(true),
           emailService.listTemplates(),
           emailService.getLogs(),
           groupService.list(),
           contactService.getContacts(false),
+          emailService.getScheduledJobs(),
         ]);
         if (isMounted) {
           setSelectedContacts(Array.isArray(cons) ? cons : []);
           setTemplates(Array.isArray(temps) ? temps : []);
           setLogs(Array.isArray(history) ? history : []);
-          setClusters(Array.isArray(clusts) ? clusts : []);
+          setContactGroups(Array.isArray(clusts) ? clusts : []);
           setAllContacts(Array.isArray(allC) ? allC : []);
+          setScheduledJobs(Array.isArray(jobs) ? jobs : []);
           setLoading(false);
         }
       } catch (error) {
@@ -116,15 +125,23 @@ export default function CampaignsPage() {
         cc: ccEmails.length > 0 ? ccEmails : undefined,
         bcc: bccEmails.length > 0 ? bccEmails : undefined,
         subject,
-        body
+        body,
+        isMarketing
       };
-      await contactService.broadcast(request);
+      
+      if (attachments.length > 0) {
+        await emailService.sendEmailWithAttachments(request, attachments);
+      } else {
+        await emailService.sendEmail(request);
+      }
+      
       showSuccess(`Campaign sent successfully.`);
       setSubject('');
       setToEmails([]);
       setCcEmails([]);
       setBccEmails([]);
       setBody('');
+      setAttachments([]); // Clear attachments after send
       fetchData(); // Refresh history
     } catch (error) {
       handleError(error, 'Failed to send campaign');
@@ -134,7 +151,11 @@ export default function CampaignsPage() {
   };
 
   const handleSchedule = async () => {
-    if (!subject || !body || toEmails.length === 0 || !scheduledTime) return;
+    const scheduledDate = new Date(scheduledTime);
+    if (scheduledDate < new Date()) {
+      handleError(new Error('Cannot schedule emails in the past.'), 'Scheduling Error');
+      return;
+    }
 
     setIsSending(true);
     try {
@@ -143,11 +164,13 @@ export default function CampaignsPage() {
         cc: ccEmails.length > 0 ? ccEmails : undefined,
         bcc: bccEmails.length > 0 ? bccEmails : undefined,
         subject,
-        body
+        body,
+        isMarketing
       };
 
-      const isoTime = new Date(scheduledTime).toISOString();
-      await emailService.scheduleEmail(request, isoTime);
+      const offset = getTimezoneOffset(timezone, scheduledDate);
+      const isoTime = `${scheduledTime}:00${offset}`;
+      await emailService.scheduleEmail(request, isoTime, attachments);
 
       showSuccess(`Campaign scheduled for ${format(new Date(scheduledTime), 'MMM dd, HH:mm')}.`);
       setSubject('');
@@ -157,11 +180,21 @@ export default function CampaignsPage() {
       setBody('');
       setScheduledTime('');
       setShowScheduler(false);
-      fetchData();
+      fetchData(); // Refresh queue
     } catch (error) {
       handleError(error, 'Failed to schedule campaign');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleCancelJob = async (jobName: string, groupName: string) => {
+    try {
+      await emailService.cancelScheduledJob(jobName, groupName);
+      showSuccess('Scheduled execution terminated.');
+      fetchData(); // Refresh queue
+    } catch (error) {
+      handleError(error, 'Termination failed.');
     }
   };
 
@@ -185,8 +218,6 @@ export default function CampaignsPage() {
         </motion.div>
       </div>
 
-
-
       <div className="flex gap-1.5 p-1.5 bg-surface-primary border border-border-color rounded-full w-fit">
         <button
           onClick={() => setActiveTab('compose')}
@@ -205,6 +236,15 @@ export default function CampaignsPage() {
           )}
         >
           Telemetry Logs
+        </button>
+        <button
+          onClick={() => setActiveTab('queue')}
+          className={cn(
+            "px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+            activeTab === 'queue' ? "bg-white text-bg-primary shadow-2xl" : "text-text-secondary hover:text-white"
+          )}
+        >
+          Pending Queue
         </button>
       </div>
 
@@ -227,6 +267,7 @@ export default function CampaignsPage() {
               isSending={isSending}
               showScheduler={showScheduler}
               scheduledTime={scheduledTime}
+              timezone={timezone}
               allContacts={allContacts}
               clusters={clusters}
               setToEmails={setToEmails}
@@ -236,6 +277,11 @@ export default function CampaignsPage() {
               setBody={setBody}
               setShowScheduler={setShowScheduler}
               setScheduledTime={setScheduledTime}
+              setTimezone={setTimezone}
+              isMarketing={isMarketing}
+              setIsMarketing={setIsMarketing}
+              attachments={attachments}
+              setAttachments={setAttachments}
               handleSend={handleSend}
               handleSchedule={handleSchedule}
             />
@@ -245,15 +291,29 @@ export default function CampaignsPage() {
               <TelemetryLogSidebar logs={logs} />
             </div>
           </motion.div>
-        ) : (
+        ) : null}
+
+        {activeTab === 'history' && (
           <motion.div
             key="history"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
           >
             <TelemetryLogTable logs={logs} />
+          </motion.div>
+        )}
+
+        {activeTab === 'queue' && (
+          <motion.div
+            key="queue"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ScheduledQueueTable jobs={scheduledJobs} onCancel={handleCancelJob} />
           </motion.div>
         )}
       </AnimatePresence>

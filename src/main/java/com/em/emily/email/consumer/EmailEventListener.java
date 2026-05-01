@@ -26,7 +26,8 @@ public class EmailEventListener {
                     request.replyTo(),
                     request.subject(),
                     request.body(),
-                    request.userId()
+                    request.userId(),
+                    request.isMarketing()
             );
             log.info("Successfully processed scheduled email.");
         } catch (Exception e) {

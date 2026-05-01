@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  Users, 
-  Mail, 
-  BarChart3, 
-  Settings, 
-  LogOut, 
+import {
+  Users,
+  Mail,
+  BarChart3,
+  Settings,
+  LogOut,
   LayoutDashboard,
   FileText,
   UserCircle
@@ -63,8 +63,8 @@ export function Sidebar() {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group text-sm font-bold tracking-tight",
-                      isActive 
-                        ? "bg-white text-bg-primary shadow-2xl shadow-white/5" 
+                      isActive
+                        ? "bg-white text-bg-primary shadow-2xl shadow-white/5"
                         : "text-text-secondary hover:text-white hover:bg-white/5"
                     )}
                   >
@@ -111,7 +111,6 @@ export function Sidebar() {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-white truncate tracking-tight">{mounted ? (user?.name || 'ROOT_USER') : '...'}</p>
-            <p className="text-[10px] text-text-secondary mt-1 font-bold uppercase tracking-[0.2em] leading-none opacity-40">Protocol Admin</p>
           </div>
         </div>
       </div>

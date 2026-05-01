@@ -30,13 +30,44 @@ export const emailService = {
     cachedLogs = null; // Invalidate cache on send
     return response.data;
   },
-  scheduleEmail: async (request: EmailRequest, scheduleTime: string): Promise<string> => {
-    const response = await api.post<string>(`/email/schedule?scheduleTime=${scheduleTime}`, request);
+  sendEmailWithAttachments: async (request: EmailRequest, files: File[]): Promise<string> => {
+    const formData = new FormData();
+    formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+    files.forEach(file => formData.append('files', file));
+    
+    const response = await api.post<string>('/email/send-with-attachments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    cachedLogs = null;
     return response.data;
   },
-  getScheduledJobs: async (): Promise<object[]> => {
-    const response = await api.get<object[]>('/email/status');
+  scheduleEmail: async (request: EmailRequest, scheduleTime: string, files: File[] = []): Promise<string> => {
+    const encodedTime = encodeURIComponent(scheduleTime);
+    
+    if (files.length > 0) {
+      const formData = new FormData();
+      formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+      files.forEach(file => formData.append('files', file));
+      
+      const response = await api.post<string>(`/email/schedule?scheduleTime=${encodedTime}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    }
+    
+    const formData = new FormData();
+    formData.append('request', new Blob([JSON.stringify(request)], { type: 'application/json' }));
+    const response = await api.post<string>(`/email/schedule?scheduleTime=${encodedTime}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
     return response.data;
+  },
+  getScheduledJobs: async (): Promise<any[]> => {
+    const response = await api.get<any[]>('/email/status');
+    return response.data;
+  },
+  cancelScheduledJob: async (jobName: string, group: string = 'DEFAULT'): Promise<void> => {
+    await api.delete(`/email/schedule/${jobName}?group=${group}`);
   },
   getLogs: async (): Promise<EmailLog[]> => {
     const now = Date.now();

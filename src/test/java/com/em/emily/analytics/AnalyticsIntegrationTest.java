@@ -2,6 +2,10 @@ package com.em.emily.analytics;
 
 import com.em.emily.analytics.dto.AnalyticsStatsDto;
 import com.em.emily.analytics.dto.EventRequest;
+import com.em.emily.auth.UserPrincipal;
+import com.em.emily.email.model.EmailLog;
+import com.em.emily.email.model.EmailStatus;
+import com.em.emily.email.repository.EmailRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +18,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,16 +46,29 @@ public class AnalyticsIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private EmailRepository emailRepository;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
                 .apply(springSecurity())
                 .build();
+        emailRepository.deleteAll();
     }
 
     @Test
     void testAnalyticsTrackingAndStats() throws Exception {
-        Long emailId = 123L;
+        UUID testUserId = UUID.randomUUID();
+        
+        EmailLog emailLog = EmailLog.builder()
+                .recipient("test@example.com")
+                .subject("Integration Test Subject")
+                .status(EmailStatus.SENT)
+                .userId(testUserId)
+                .build();
+        emailLog = emailRepository.save(emailLog);
+        Long emailId = emailLog.getId();
 
         // 1. Send / Simulate SENT event
         EventRequest sentEvent = EventRequest.builder()
@@ -88,7 +108,9 @@ public class AnalyticsIntegrationTest {
                 .andExpect(status().isFound());
 
         // 5. Verify Stats
-        MvcResult result = mockMvc.perform(get("/api/v1/analytics/stats"))
+        UserPrincipal principal = new UserPrincipal(testUserId, "test@example.com");
+        MvcResult result = mockMvc.perform(get("/api/v1/analytics/stats")
+                        .with(user(principal)))
                 .andExpect(status().isOk())
                 .andReturn();
 
@@ -104,4 +126,32 @@ public class AnalyticsIntegrationTest {
         assertThat(stats.getClickThroughRate()).isEqualTo(100.0);
         assertThat(stats.getClickToOpenRate()).isEqualTo(100.0);
     }
+
+    @Test
+    void testGetStatsForContact() throws Exception {
+        Long emailId = 456L;
+        String email = "contact@example.com";
+
+        EventRequest sentEvent = EventRequest.builder()
+                .emailId(emailId)
+                .eventType(EmailEventType.SENT)
+                .recipient(email)
+                .build();
+
+        mockMvc.perform(post("/api/v1/analytics/events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sentEvent)))
+                .andExpect(status().isCreated());
+
+        MvcResult result = mockMvc.perform(get("/api/v1/analytics/contact")
+                        .param("email", email))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        AnalyticsStatsDto stats = objectMapper.readValue(responseBody, AnalyticsStatsDto.class);
+
+        assertThat(stats.getTotalSent()).isEqualTo(1);
+    }
 }
+

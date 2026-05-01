@@ -20,5 +20,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByProviderAndProviderId(Provider provider, String providerId);
 
-    Optional<User> findByActivationCode(String code);
+
 }

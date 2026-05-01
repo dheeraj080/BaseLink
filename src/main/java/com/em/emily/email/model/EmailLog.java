@@ -45,6 +45,9 @@ public class EmailLog {
 
     private LocalDateTime sentAt;
 
+    @Builder.Default
+    private boolean isMarketing = true;
+
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
 }

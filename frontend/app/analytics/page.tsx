@@ -51,6 +51,7 @@ export default function AnalyticsPage() {
   const [filterClusterId, setFilterClusterId] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState<string | 'all'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'marketing' | 'outreach'>('all');
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -85,12 +86,22 @@ export default function AnalyticsPage() {
   }, []);
 
   const filteredLogs = useMemo(() => {
-    if (filterClusterId === 'all') return logs;
-    const clusterEmails = contacts
-      .filter(c => (c.groups || []).some(g => g.id === filterClusterId))
-      .map(c => c.email.toLowerCase());
-    return logs.filter(log => clusterEmails.includes(log.recipient.toLowerCase()));
-  }, [logs, contacts, filterClusterId]);
+    let result = logs;
+    if (filterClusterId !== 'all') {
+      const clusterEmails = contacts
+        .filter(c => (c.groups || []).some(g => g.id === filterClusterId))
+        .map(c => c.email.toLowerCase());
+      result = result.filter(log => clusterEmails.includes(log.recipient.toLowerCase()));
+    }
+
+    if (filterMode === 'marketing') {
+      result = result.filter(log => log.isMarketing);
+    } else if (filterMode === 'outreach') {
+      result = result.filter(log => !log.isMarketing);
+    }
+
+    return result;
+  }, [logs, contacts, filterClusterId, filterMode]);
 
   const campaigns = useMemo(() => {
     const uniqueSubjects = Array.from(new Set(filteredLogs.map(log => log.subject)));
@@ -103,10 +114,9 @@ export default function AnalyticsPage() {
       // Since backend interaction stats are global only, 
       // we'll assign some proportional mock stats for the UI demo
       // In real scenarios, these would come from an API filter
-      const hash = String(subject || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const openRate = 0.3 + (hash % 20) / 100;
-      const clickRate = 0.05 + (hash % 10) / 100;
-      
+      const openRate = 0;
+      const clickRate = 0;
+
       return {
         subject,
         total,
@@ -152,8 +162,8 @@ export default function AnalyticsPage() {
     const sent = filteredLogs.filter(l => l.status === 'SENT').length;
     const failed = filteredLogs.filter(l => l.status === 'FAILED').length;
     
-    const openRate = total > 0 ? 0.35 : 0;
-    const clickRate = total > 0 ? 0.12 : 0;
+    const openRate = 0;
+    const clickRate = 0;
 
     return {
       totalSent: sent,
@@ -177,7 +187,7 @@ export default function AnalyticsPage() {
 
   const formatPercent = (val: number | undefined) => {
     if (val === undefined) return 0;
-    return val <= 1.0 ? val * 100 : val;
+    return val;
   };
 
   const metrics = [
@@ -222,6 +232,16 @@ export default function AnalyticsPage() {
             value={filterClusterId}
             onChange={setFilterClusterId}
             className="w-48"
+          />
+          <CustomSelect
+            options={[
+              { value: 'all', label: 'All Modes' },
+              { value: 'marketing', label: 'Newsletter' },
+              { value: 'outreach', label: 'Outreach' }
+            ]}
+            value={filterMode}
+            onChange={(val) => setFilterMode(val as any)}
+            className="w-40"
           />
           <CustomSelect
             options={[

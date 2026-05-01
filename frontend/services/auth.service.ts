@@ -28,12 +28,16 @@ export const authService = {
     const response = await api.post<object>('/auth/forgot-password', data);
     return response.data;
   },
-  activate: async (code: string): Promise<string> => {
-    const response = await api.get<string>(`/auth/activate?code=${code}`);
+  activate: async (email: string, code: string): Promise<any> => {
+    const response = await api.post('/auth/activate', { email, code });
     return response.data;
   },
   getOAuthUrl: async (provider: 'GOOGLE' | 'GITHUB'): Promise<{ url: string }> => {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
     return { url: `${backendUrl}/oauth2/authorization/${provider.toLowerCase()}` };
+  },
+  verify2fa: async (mfaToken: string, code: string): Promise<TokenResponse> => {
+    const response = await api.post<TokenResponse>('/auth/verify-2fa', { mfaToken, code });
+    return response.data;
   },
 };

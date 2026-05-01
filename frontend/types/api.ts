@@ -55,6 +55,7 @@ export interface EmailRequest {
   replyTo?: string;
   subject: string;
   body: string;
+  isMarketing?: boolean;
 }
 
 export interface BulkSelectionRequest {
@@ -90,6 +91,7 @@ export interface EmailLog {
   recipient: string;
   subject: string;
   status?: 'PENDING' | 'SENT' | 'FAILED' | 'RETRYING';
+  isMarketing?: boolean;
   createdAt?: string;
   sentAt?: string;
   errorMessage?: string;

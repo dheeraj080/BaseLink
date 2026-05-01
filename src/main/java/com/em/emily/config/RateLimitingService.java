@@ -28,10 +28,32 @@ public class RateLimitingService {
     private final Map<String, Bucket> localFallbackCache = new ConcurrentHashMap<>();
     private boolean useRedis = true;
 
+    public enum BucketType {
+        GENERAL(60, Duration.ofMinutes(1)),
+        AUTH_TOTP(5, Duration.ofMinutes(5));
+
+        private final int capacity;
+        private final Duration duration;
+
+        BucketType(int capacity, Duration duration) {
+            this.capacity = capacity;
+            this.duration = duration;
+        }
+
+        public int getCapacity() { return capacity; }
+        public Duration getDuration() { return duration; }
+    }
+
     public Bucket resolveBucket(String key) {
+        return resolveBucket(key, BucketType.GENERAL);
+    }
+
+    public Bucket resolveBucket(String key, BucketType type) {
         BucketConfiguration configuration = BucketConfiguration.builder()
-                .addLimit(Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1))))
+                .addLimit(Bandwidth.classic(type.getCapacity(), Refill.greedy(type.getCapacity(), type.getDuration())))
                 .build();
+
+        String storageKey = type.name() + ":" + key;
 
         if (useRedis) {
             try {
@@ -39,7 +61,6 @@ public class RateLimitingService {
                     synchronized (this) {
                         if (proxyManager == null) {
                             RedisClient redisClient = RedisClient.create("redis://" + redisHost + ":" + redisPort);
-                            // Verify connection eagerly to trigger exception if Redis is down
                             redisClient.connect().close();
                             this.proxyManager = LettuceBasedProxyManager.builderFor(redisClient)
                                     .withExpirationStrategy(ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofSeconds(10)))
@@ -47,16 +68,15 @@ public class RateLimitingService {
                         }
                     }
                 }
-                return proxyManager.builder().build(key.getBytes(), configuration);
+                return proxyManager.builder().build(storageKey.getBytes(), configuration);
             } catch (Exception e) {
                 useRedis = false;
                 System.err.println("Redis connection failed for RateLimitingService. Falling back to in-memory. Error: " + e.getMessage());
             }
         }
 
-        return localFallbackCache.computeIfAbsent(key, k -> Bucket.builder()
-                .addLimit(Bandwidth.classic(60, Refill.greedy(60, Duration.ofMinutes(1))))
+        return localFallbackCache.computeIfAbsent(storageKey, k -> Bucket.builder()
+                .addLimit(Bandwidth.classic(type.getCapacity(), Refill.greedy(type.getCapacity(), type.getDuration())))
                 .build());
     }
 }
-

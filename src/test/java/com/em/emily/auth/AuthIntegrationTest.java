@@ -63,6 +63,12 @@ public class AuthIntegrationTest {
     @Autowired
     private RefreshTokenRepository refreshTokenRepository;
 
+    @Autowired
+    private com.em.emily.auth.service.TotpService totpService;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.em.emily.auth.service.EmailService emailService;
+
     @BeforeEach
     void setup() {
         mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext)
@@ -109,5 +115,69 @@ public class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andDo(org.springframework.test.web.servlet.result.MockMvcResultHandlers.print())
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testRegisterAndActivate() throws Exception {
+        com.em.emily.auth.dto.UserDTO registerDTO = com.em.emily.auth.dto.UserDTO.builder()
+                .email("new@example.com")
+                .password("password123")
+                .name("New User")
+                .build();
+
+        // 1. Register
+        mockMvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registerDTO)))
+                .andExpect(status().isCreated());
+
+        User user = userRepository.findByEmail("new@example.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertFalse(user.isEnabled());
+        org.junit.jupiter.api.Assertions.assertNotNull(user.getTotpSecret());
+
+        // 2. Generate TOTP code
+        String code = totpService.generateCode(user.getTotpSecret());
+
+        // 3. Activate
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/auth/activate")
+                        .param("email", "new@example.com")
+                        .param("code", code))
+                .andExpect(status().isFound());
+
+        user = userRepository.findByEmail("new@example.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertTrue(user.isEnabled());
+    }
+
+    @Test
+    void testForgotPasswordAndReset() throws Exception {
+        // 1. Request Reset
+        mockMvc.perform(post("/api/v1/auth/forgot-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("email", "test@example.com"))))
+                .andExpect(status().isOk());
+
+        User user = userRepository.findByEmail("test@example.com").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNotNull(user.getTotpSecret());
+
+        // 2. Generate TOTP code
+        String code = totpService.generateCode(user.getTotpSecret());
+
+        // 3. Reset Password
+        mockMvc.perform(post("/api/v1/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "email", "test@example.com",
+                                "code", code,
+                                "newPassword", "newpassword123"
+                        ))))
+                .andExpect(status().isOk());
+
+        // 4. Login with new password
+        LoginRequest loginRequest = new LoginRequest("test@example.com", "newpassword123");
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists());
     }
 }

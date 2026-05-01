@@ -28,6 +28,15 @@ public class AnalyticsController {
         return ResponseEntity.ok(analyticsService.getStats(principal.id()));
     }
 
+    @GetMapping("/stats/timeline")
+    public ResponseEntity<java.util.List<com.em.emily.analytics.dto.TimelinePointDto>> getTimeline(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
+        return ResponseEntity.ok(analyticsService.getTimelineStats(principal.id()));
+    }
+
     @PostMapping("/events")
     public ResponseEntity<Void> recordExternalEvent(@RequestBody EventRequest request) {
         analyticsService.recordEvent(request.getEmailId(), request.getEventType(), request.getRecipient());
@@ -35,8 +44,10 @@ public class AnalyticsController {
     }
 
     @GetMapping("/track/open/{emailId}")
-    public ResponseEntity<byte[]> trackOpen(@PathVariable Long emailId) {
-        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.OPENED, "unknown");
+    public ResponseEntity<byte[]> trackOpen(
+            @PathVariable Long emailId,
+            @RequestParam(required = false, defaultValue = "unknown") String recipient) {
+        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.OPENED, recipient);
         // Return 1x1 transparent GIF
         byte[] pixel = Base64.getDecoder().decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
         return ResponseEntity.ok()
@@ -45,16 +56,21 @@ public class AnalyticsController {
     }
 
     @GetMapping("/track/click/{emailId}")
-    public ResponseEntity<Void> trackClick(@PathVariable Long emailId, @RequestParam String url) {
-        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.CLICKED, "unknown");
+    public ResponseEntity<Void> trackClick(
+            @PathVariable Long emailId,
+            @RequestParam String url,
+            @RequestParam(required = false, defaultValue = "unknown") String recipient) {
+        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.CLICKED, recipient);
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(url))
                 .build();
     }
 
     @GetMapping("/track/unsubscribe/{emailId}")
-    public ResponseEntity<String> trackUnsubscribe(@PathVariable Long emailId) {
-        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.UNSUBSCRIBED, "unknown");
+    public ResponseEntity<String> trackUnsubscribe(
+            @PathVariable Long emailId,
+            @RequestParam(required = false, defaultValue = "unknown") String recipient) {
+        analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.UNSUBSCRIBED, recipient);
         return ResponseEntity.ok("You have been unsubscribed successfully.");
     }
 
@@ -62,5 +78,10 @@ public class AnalyticsController {
     public ResponseEntity<String> trackReply(@PathVariable Long emailId, @RequestParam String recipient) {
         analyticsService.recordEvent(emailId, com.em.emily.analytics.EmailEventType.REPLIED, recipient);
         return ResponseEntity.ok("Reply registered successfully.");
+    }
+
+    @GetMapping("/contact")
+    public ResponseEntity<AnalyticsStatsDto> getStatsForContact(@RequestParam String email) {
+        return ResponseEntity.ok(analyticsService.getStatsForContact(email));
     }
 }

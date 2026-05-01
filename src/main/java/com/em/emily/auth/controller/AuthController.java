@@ -14,6 +14,7 @@ import com.em.emily.auth.security.JwtService;
 import com.em.emily.auth.service.AuthService;
 import com.em.emily.auth.service.ResetPasswordService;
 import com.em.emily.auth.service.UserService;
+import com.em.emily.auth.service.TotpService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -54,6 +55,7 @@ public class AuthController {
     private final CookieService cookieService;
     private final UserService userService;
     private final ResetPasswordService resetPasswordService;
+    private final TotpService totpService;
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
@@ -66,6 +68,38 @@ public class AuthController {
         User user = userRepository.findByEmail(loginRequest.email())
                 .orElseThrow(() -> new BadCredentialsException("User not found after authentication"));
 
+        // 3. Check MFA
+        if (user.isMfaEnabled()) {
+            String mfaToken = jwtService.generateMfaToken(user);
+            return ResponseEntity.ok(TokenResponse.mfaRequired(mfaToken));
+        }
+
+        return generateFullTokenResponse(user, response);
+    }
+
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<TokenResponse> verify2fa(@RequestBody Map<String, String> request, HttpServletResponse response) {
+        String mfaToken = request.get("mfaToken");
+        String code = request.get("code");
+
+        if (mfaToken == null || code == null) {
+            throw new BadCredentialsException("MFA token and code are required");
+        }
+
+        UUID userId = jwtService.getUserId(mfaToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        // Verify TOTP (30s window)
+        boolean isValid = totpService.verifyCode(user.getTotpSecret(), code);
+        if (!isValid) {
+            throw new BadCredentialsException("Invalid MFA code");
+        }
+
+        return generateFullTokenResponse(user, response);
+    }
+
+    private ResponseEntity<TokenResponse> generateFullTokenResponse(User user, HttpServletResponse response) {
         // 3. Prepare Refresh Token Metadata
         String jti = UUID.randomUUID().toString();
 
@@ -223,21 +257,21 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(registeredUser);
     }
 
-    @GetMapping("/activate")
-    public ResponseEntity<String> activateUser(@RequestParam("code") String code) {
-        // Logic: find user by code, set enabled = true, clear code
-        boolean isActivated = userService.activateUser(code);
-
-        if (isActivated) {
-            // 202 Accepted is fine, but 200 OK is more standard for success
-            return ResponseEntity.status(HttpStatus.FOUND)
-                    .location(URI.create("/auth/login?activated=true"))
-                    .build();
-        } else {
-            // 417 Expectation Failed is a bit unusual here;
-            // usually 400 Bad Request or 410 Gone (if link expired) is used.
-            return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED)
-                    .body("Activation failed. Link may be invalid or expired.");
+    @PostMapping("/activate")
+    public ResponseEntity<?> activateUser(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String code = request.get("code");
+        try {
+            boolean isActivated = userService.activateUser(email, code);
+            if (isActivated) {
+                return ResponseEntity.ok(Map.of("message", "Account successfully activated."));
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "Activation failed."));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
         }
     }
 

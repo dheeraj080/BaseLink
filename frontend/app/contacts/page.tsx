@@ -162,6 +162,27 @@ export default function ContactsPage() {
     }
   };
 
+  const handleBulkAdd = async (emails: string[]) => {
+    setLoading(true);
+    try {
+      const groupsPayload = selectedGroupsForContact.map(id => ({ id }));
+      const contacts = emails.map(email => ({
+        email: email.trim(),
+        name: email.split('@')[0],
+        selected: false,
+        groups: groupsPayload
+      }));
+      await contactService.createMultiple(contacts);
+      showSuccess(`${contacts.length} contacts initialized.`);
+      setIsAddModalOpen(false);
+      fetchContacts();
+    } catch (error) {
+      handleError(error, 'Bulk initialization failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSelectAll = async () => {
     const allSelected = selectedIds.size === contacts.length;
     try {
@@ -446,6 +467,7 @@ export default function ContactsPage() {
         selectedGroups={selectedGroupsForContact}
         setSelectedGroups={setSelectedGroupsForContact}
         onSubmit={handleSaveContact}
+        onBulkSubmit={handleBulkAdd}
         loading={loading}
       />
 

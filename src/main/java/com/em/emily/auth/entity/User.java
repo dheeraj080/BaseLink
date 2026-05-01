@@ -7,6 +7,7 @@ import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.em.emily.common.converter.TotpSecretConverter;
 
 import java.time.Instant;
 import java.util.*;
@@ -41,7 +42,14 @@ public class User implements UserDetails {
     @Builder.Default
     private boolean enabled = false;
 
-    private String activationCode;
+
+
+    @Column(name = "totp_secret")
+    @Convert(converter = TotpSecretConverter.class)
+    private String totpSecret;
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled = false;
 
     @Builder.Default
     private Instant createdAt = Instant.now();

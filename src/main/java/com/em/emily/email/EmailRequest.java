@@ -23,7 +23,9 @@ public record EmailRequest(
         @NotBlank(message = "Body cannot be empty")
         String body,
 
-        java.util.UUID userId
+        java.util.UUID userId,
+        
+        Boolean isMarketing
 ) implements Serializable {
 
     public EmailRequest(
@@ -34,9 +36,24 @@ public record EmailRequest(
             String subject,
             String body
     ) {
-        this(to, cc, bcc, replyTo, subject, body, null);
+        this(to, cc, bcc, replyTo, subject, body, null, true);
+    }
+    
+    public EmailRequest(
+            java.util.List<String> to,
+            java.util.List<String> cc,
+            java.util.List<String> bcc,
+            String replyTo,
+            String subject,
+            String body,
+            java.util.UUID userId
+    ) {
+        this(to, cc, bcc, replyTo, subject, body, userId, true);
+    }
+    
+    public Boolean isMarketing() {
+        return isMarketing == null ? true : isMarketing;
     }
 
-        // SerialVersionUID is allowed inside the record block
-        private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
 }

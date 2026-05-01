@@ -9,6 +9,7 @@ import com.em.emily.auth.helper.UserHelper;
 import com.em.emily.auth.repository.RoleRepository;
 import com.em.emily.auth.repository.UserRepository;
 import com.em.emily.auth.service.EmailService;
+import com.em.emily.auth.service.TotpService;
 import com.em.emily.auth.service.UserService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class UserServiceImpl implements UserService {
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TotpService totpService;
 
     @Override
     @Transactional
@@ -46,9 +48,9 @@ public class UserServiceImpl implements UserService {
         user.setProvider(userDTO.getProvider() != null ? userDTO.getProvider() : Provider.LOCAL);
         user.setEnabled(false);
 
-        // Generate the Activation Code
-        String code = UUID.randomUUID().toString();
-        user.setActivationCode(code);
+        // Generate the TOTP Secret
+        String secret = totpService.generateSecret();
+        user.setTotpSecret(secret);
 
         // 3. Assign Default Role
         Role defaultRole = roleRepository.findByName("ROLE_USER")
@@ -58,10 +60,20 @@ public class UserServiceImpl implements UserService {
         // 4. Persistence
         User savedUser = userRepository.save(user);
 
-        // 5. Email Notification
-        String activationUrl = "http://localhost:5000/api/v1/auth/activate?code=" + code;
-        String subject = "Activate your LeVI Account";
-        String body = "Welcome! Please activate your account: " + activationUrl;
+        // 5. Generate TOTP Code for Email
+        String code = totpService.generateCode(secret);
+
+        // 6. Email Notification
+        String subject = "Activate your BaseLink Account";
+        String body = """
+                Welcome to BaseLink!
+                
+                Please use the following 6-digit code to activate your account:
+                
+                %s
+                
+                This code is valid for 10 minutes.
+                """.formatted(code);
         emailService.sendEmail(savedUser.getEmail(), subject, body);
 
         return modelMapper.map(savedUser, UserDTO.class);
@@ -69,16 +81,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public boolean activateUser(String code) {
-        // 1. Find user by activation code
-        User user = userRepository.findByActivationCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("Invalid or expired activation code"));
+    public boolean activateUser(String email, String code) {
+        // 1. Find user by email
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
+
+        if (user.isEnabled()) {
+            return true;
+        }
+
+        // 2. Verify TOTP code
+        if (user.getTotpSecret() == null) {
+            throw new RuntimeException("User has no TOTP secret configured");
+        }
+
+        boolean isValid = totpService.verifyCode(user.getTotpSecret(), code, 600);
+        if (!isValid) {
+            throw new RuntimeException("Invalid or expired activation code");
+        }
+
         user.setEnabled(true);
-        user.setActivationCode(null);
         userRepository.save(user);
 
         log.info("User with email {} has been successfully activated.", user.getEmail());
-        return false;
+        return true;
     }
 
     @Override

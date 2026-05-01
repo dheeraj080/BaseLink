@@ -35,7 +35,15 @@ export function TelemetryLogTable({ logs }: TelemetryLogTableProps) {
                   <span className="text-sm font-bold text-white tracking-tight">{log.recipient}</span>
                 </td>
                 <td className="px-10 py-6">
-                  <span className="text-[11px] font-bold text-text-secondary/60 uppercase tracking-widest truncate max-w-[200px] inline-block">{log.subject}</span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] font-bold text-text-secondary/60 uppercase tracking-widest truncate max-w-[200px] inline-block">{log.subject}</span>
+                    <span className={cn(
+                      "text-[8px] font-bold uppercase tracking-widest w-fit",
+                      log.isMarketing ? "text-indigo-400/60" : "text-emerald-400/60"
+                    )}>
+                      {log.isMarketing ? "Newsletter" : "Cold Outreach"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-10 py-6">
                   <div className={cn(

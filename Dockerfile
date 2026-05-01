@@ -9,9 +9,6 @@ RUN java -Djarmode=layertools -jar app.jar extract --destination target/extracte
 FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 
-# Install network debugging tools
-RUN apk add --no-cache bind-tools iputils
-
 # Ensure we have a system group/users
 RUN addgroup -S spring && adduser -S spring -G spring
 

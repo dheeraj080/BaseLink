@@ -1,14 +1,22 @@
 package com.em.emily.auth.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record TokenResponse(
         String accessToken,
         String refreshToken,
-        long expiresIn,
+        Long expiresIn,
         String tokenType,
-        UserDTO user
+        UserDTO user,
+        Boolean mfaRequired,
+        String mfaToken
 ) {
-    // Static factory method for cleaner instantiation
     public static TokenResponse of(String accessToken, String refreshToken, long expiresIn, UserDTO user) {
-        return new TokenResponse(accessToken, refreshToken, expiresIn, "Bearer", user);
+        return new TokenResponse(accessToken, refreshToken, expiresIn, "Bearer", user, false, null);
+    }
+
+    public static TokenResponse mfaRequired(String mfaToken) {
+        return new TokenResponse(null, null, null, null, null, true, mfaToken);
     }
 }

@@ -3,6 +3,7 @@
 import React from 'react';
 import { Sidebar } from './Sidebar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AnalyticsProvider } from '@/contexts/AnalyticsContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { usePathname } from 'next/navigation';
 
@@ -52,7 +53,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      <AnalyticsProvider>
+        <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </AnalyticsProvider>
     </AuthProvider>
   );
 }

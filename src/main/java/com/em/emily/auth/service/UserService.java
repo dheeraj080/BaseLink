@@ -16,5 +16,5 @@ public interface UserService {
 
     Iterable<UserDTO> getAllUsers();
 
-    boolean activateUser(String code);
+    boolean activateUser(String email, String code);
 }

@@ -30,15 +30,24 @@ public class EmailService {
     @org.springframework.beans.factory.annotation.Value("${app.base-url:http://localhost:5000}")
     private String baseUrl;
 
-    private String instrumentEmailBody(String body, Long emailId) {
+    private String instrumentEmailBody(String body, Long emailId, String recipient, Boolean isMarketing) {
         if (body == null) return null;
-        String trackingPixel = String.format("<img src=\"%s/api/v1/analytics/track/open/%d\" width=\"1\" height=\"1\" style=\"display:none;\" />", baseUrl, emailId);
-        String unsubscribeFooter = String.format("<br/><br/><hr/><p style=\"font-size:12px;color:#888;\">Don't want to receive these emails? <a href=\"%s/api/v1/analytics/track/unsubscribe/%d\">Unsubscribe here</a>.</p>", baseUrl, emailId);
-        String modifiedBody = body + trackingPixel + unsubscribeFooter;
+        
+        String modifiedBody = body;
+        
+        if (Boolean.TRUE.equals(isMarketing)) {
+            String trackingPixel = String.format("<img src=\"%s/api/v1/analytics/track/open/%d?recipient=%s\" width=\"1\" height=\"1\" style=\"display:none;\" />", baseUrl, emailId, recipient);
+            String unsubscribeFooter = String.format("<br/><br/><hr/><p style=\"font-size:12px;color:#888;\">Don't want to receive these emails? <a href=\"%s/api/v1/analytics/track/unsubscribe/%d?recipient=%s\">Unsubscribe here</a>.</p>", baseUrl, emailId, recipient);
+            modifiedBody += trackingPixel + unsubscribeFooter;
+        }
 
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("href=\"(https?://[^\"]+)\"");
         java.util.regex.Matcher matcher = pattern.matcher(modifiedBody);
-        return matcher.replaceAll("href=\"" + baseUrl + "/api/v1/analytics/track/click/" + emailId + "?url=$1\"");
+        return matcher.replaceAll(mr -> {
+            String originalUrl = mr.group(1);
+            String encodedUrl = java.net.URLEncoder.encode(originalUrl, java.nio.charset.StandardCharsets.UTF_8);
+            return "href=\"" + baseUrl + "/api/v1/analytics/track/click/" + emailId + "?recipient=" + recipient + "&url=" + encodedUrl + "\"";
+        });
     }
 
     @Async("taskExecutor")
@@ -48,80 +57,174 @@ public class EmailService {
 
     @Async("taskExecutor")
     public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body, java.util.UUID userId) {
+        sendEmail(to, cc, bcc, replyTo, subject, body, userId, true);
+    }
+
+    @Async("taskExecutor")
+    public void sendEmail(List<String> to, List<String> cc, List<String> bcc, String replyTo, String subject, String body, java.util.UUID userId, Boolean isMarketing) {
         // 1. Validation
         if (to == null || to.isEmpty()) {
             log.error("Cannot send email: Recipient list is empty.");
             return;
         }
 
-        EmailLog logEntry = new EmailLog();
-        logEntry.setRecipient(String.join(",", to));
-        logEntry.setSubject(subject);
-        logEntry.setStatus(EmailStatus.PENDING);
-        logEntry.setUserId(userId);
-        logEntry = emailRepository.save(logEntry);
+        java.util.Set<String> allRecipients = new java.util.HashSet<>();
+        if (to != null) allRecipients.addAll(to);
+        if (cc != null) allRecipients.addAll(cc);
+        if (bcc != null) allRecipients.addAll(bcc);
 
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        for (String recipient : allRecipients) {
+            if (recipient == null || recipient.isBlank()) continue;
 
-            helper.setTo(to.toArray(new String[0]));
-            helper.setSubject(subject);
-            helper.setText(instrumentEmailBody(body, logEntry.getId()), true); // true = HTML enabled
+            EmailLog logEntry = new EmailLog();
+            logEntry.setRecipient(recipient);
+            logEntry.setSubject(subject);
+            logEntry.setStatus(EmailStatus.PENDING);
+            logEntry.setUserId(userId);
+            logEntry.setMarketing(Boolean.TRUE.equals(isMarketing));
+            logEntry = emailRepository.save(logEntry);
 
-            if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
-            if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
-            if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            mailSender.send(message);
+                helper.setTo(recipient);
+                helper.setSubject(subject);
+                helper.setText(instrumentEmailBody(body, logEntry.getId(), recipient, isMarketing), true); // true = HTML enabled
 
-            logEntry.setStatus(EmailStatus.SENT);
-            logEntry.setSentAt(LocalDateTime.now());
-            log.info("Email sent successfully to: {}", to);
-            
-            eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
+                if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
 
-        } catch (MessagingException | MailException e) {
-            logEntry.setStatus(EmailStatus.FAILED);
-            logEntry.setErrorMessage(e.getMessage());
-            log.error("Email failed for recipient {}: {}", to, e.getMessage());
+                mailSender.send(message);
+
+                logEntry.setStatus(EmailStatus.SENT);
+                logEntry.setSentAt(LocalDateTime.now());
+                log.info("Email sent successfully to: {}", recipient);
+
+                eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
+
+            } catch (MessagingException | MailException e) {
+                logEntry.setStatus(EmailStatus.FAILED);
+                logEntry.setErrorMessage(e.getMessage());
+                log.error("Email failed for recipient {}: {}", recipient, e.getMessage());
+            }
+
+            emailRepository.save(logEntry);
         }
-
-        emailRepository.save(logEntry);
     }
 
     @Async("taskExecutor")
-    public void sendEmailWithAttachment(List<String> to, String subject, String body, MultipartFile file) {
+    public void sendEmailWithAttachments(
+            List<String> to,
+            List<String> cc,
+            List<String> bcc,
+            String replyTo,
+            String subject,
+            String body,
+            java.util.UUID userId,
+            boolean isMarketing,
+            List<org.springframework.web.multipart.MultipartFile> files) {
         if (to == null || to.isEmpty()) return;
 
-        EmailLog logEntry = new EmailLog();
-        logEntry.setRecipient(String.join(",", to));
-        logEntry.setSubject(subject + " [Attachment: " + file.getOriginalFilename() + "]");
-        logEntry.setStatus(EmailStatus.PENDING);
-        logEntry = emailRepository.save(logEntry);
+        for (String recipient : to) {
+            if (recipient == null || recipient.isBlank()) continue;
 
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            EmailLog logEntry = new EmailLog();
+            logEntry.setRecipient(recipient);
+            logEntry.setSubject(subject + (files != null && !files.isEmpty() ? " [Attachments]" : ""));
+            logEntry.setStatus(EmailStatus.PENDING);
+            logEntry.setUserId(userId);
+            logEntry.setMarketing(isMarketing);
+            logEntry = emailRepository.save(logEntry);
 
-            helper.setTo(to.toArray(new String[0]));
-            helper.setSubject(subject);
-            helper.setText(instrumentEmailBody(body, logEntry.getId()), true);
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            if (file != null && !file.isEmpty()) {
-                helper.addAttachment(file.getOriginalFilename(), file);
+                helper.setTo(recipient);
+                if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
+                if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
+                if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+                
+                helper.setSubject(subject);
+                helper.setText(instrumentEmailBody(body, logEntry.getId(), recipient, isMarketing), true);
+
+                if (files != null) {
+                    for (org.springframework.web.multipart.MultipartFile file : files) {
+                        if (file != null && !file.isEmpty()) {
+                            helper.addAttachment(java.util.Objects.requireNonNull(file.getOriginalFilename()), file);
+                        }
+                    }
+                }
+
+                mailSender.send(message);
+
+                logEntry.setStatus(EmailStatus.SENT);
+                logEntry.setSentAt(LocalDateTime.now());
+                eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
+            } catch (MessagingException | MailException e) {
+                logEntry.setStatus(EmailStatus.FAILED);
+                logEntry.setErrorMessage(e.getMessage());
+                log.error("Email with attachments failed for {}: {}", recipient, e.getMessage());
             }
-
-            mailSender.send(message);
-
-            logEntry.setStatus(EmailStatus.SENT);
-            logEntry.setSentAt(LocalDateTime.now());
-            eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
-        } catch (MessagingException | MailException e) {
-            logEntry.setStatus(EmailStatus.FAILED);
-            logEntry.setErrorMessage(e.getMessage());
-            log.error("Email with attachment failed: {}", e.getMessage());
+            emailRepository.save(logEntry);
         }
-        emailRepository.save(logEntry);
+    }
+    @Async("taskExecutor")
+    public void sendEmailWithFileSystemAttachments(
+            List<String> to,
+            List<String> cc,
+            List<String> bcc,
+            String replyTo,
+            String subject,
+            String body,
+            java.util.UUID userId,
+            boolean isMarketing,
+            List<String> filePaths) {
+        if (to == null || to.isEmpty()) return;
+
+        for (String recipient : to) {
+            if (recipient == null || recipient.isBlank()) continue;
+
+            EmailLog logEntry = new EmailLog();
+            logEntry.setRecipient(recipient);
+            logEntry.setSubject(subject + (filePaths != null && !filePaths.isEmpty() ? " [Attachments]" : ""));
+            logEntry.setStatus(EmailStatus.PENDING);
+            logEntry.setUserId(userId);
+            logEntry.setMarketing(isMarketing);
+            logEntry = emailRepository.save(logEntry);
+
+            try {
+                MimeMessage message = mailSender.createMimeMessage();
+                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+                helper.setTo(recipient);
+                if (cc != null && !cc.isEmpty()) helper.setCc(cc.toArray(new String[0]));
+                if (bcc != null && !bcc.isEmpty()) helper.setBcc(bcc.toArray(new String[0]));
+                if (replyTo != null && !replyTo.isBlank()) helper.setReplyTo(replyTo);
+
+                helper.setSubject(subject);
+                helper.setText(instrumentEmailBody(body, logEntry.getId(), recipient, isMarketing), true);
+
+                if (filePaths != null) {
+                    for (String path : filePaths) {
+                        java.io.File file = new java.io.File(path);
+                        if (file.exists()) {
+                            helper.addAttachment(file.getName(), file);
+                        }
+                    }
+                }
+
+                mailSender.send(message);
+
+                logEntry.setStatus(EmailStatus.SENT);
+                logEntry.setSentAt(LocalDateTime.now());
+                eventPublisher.publishEvent(new com.em.emily.email.EmailSentEvent(logEntry.getId(), logEntry.getRecipient(), logEntry.getSubject(), logEntry.getSentAt()));
+            } catch (MessagingException | MailException e) {
+                logEntry.setStatus(EmailStatus.FAILED);
+                logEntry.setErrorMessage(e.getMessage());
+                log.error("Email with filesystem attachments failed for {}: {}", recipient, e.getMessage());
+            }
+            emailRepository.save(logEntry);
+        }
     }
 }

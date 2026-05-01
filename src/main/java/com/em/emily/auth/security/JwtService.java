@@ -60,6 +60,22 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateMfaToken(User user) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+                .id(UUID.randomUUID().toString())
+                .subject(user.getId().toString())
+                .issuer(issuer)
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(now.plusSeconds(300))) // 5 minutes to complete MFA
+                .claims(Map.of(
+                        "email", user.getEmail(),
+                        "typ", "mfa"
+                ))
+                .signWith(key, SignatureAlgorithm.HS512)
+                .compact();
+    }
+
     // generate refreshotken.
     public String generateRefreshToken(User user, String jti) {
         Instant now = Instant.now();

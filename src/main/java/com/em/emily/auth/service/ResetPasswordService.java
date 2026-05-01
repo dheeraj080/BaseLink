@@ -19,35 +19,28 @@ import java.time.temporal.ChronoUnit;
 @RequiredArgsConstructor
 public class ResetPasswordService {
 
-    private final ResetPasswordTokenRepository tokenRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-
-    // SecureRandom is better for generating security codes than the default Random
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final TotpService totpService;
 
     @Transactional
     public void sendResetCode(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 1. Clean up any existing codes for this user to avoid conflicts
-        tokenRepository.deleteByUser(user);
-        tokenRepository.flush();
+        // 1. Ensure user has a TOTP secret
+        if (user.getTotpSecret() == null || user.getTotpSecret().isEmpty()) {
+            user.setTotpSecret(totpService.generateSecret());
+            userRepository.save(user);
+        }
 
-        // 2. Generate a 6-digit numeric code (e.g., "054321")
-        String code = String.format("%06d", secureRandom.nextInt(1000000));
+        // 2. Generate a 6-digit TOTP code
+        String code = totpService.generateCode(user.getTotpSecret());
 
-        // 3. Save the code to the database
-        ResetPasswordToken resetToken = ResetPasswordToken.builder()
-                .code(code) // Using the 'token' field in the DB to store the numeric code
-                .user(user)
-                .expiryDate(Instant.now().plus(10, ChronoUnit.MINUTES)) // Codes should be short-lived
-                .used(false)
-                .build();
-
-        tokenRepository.save(resetToken);
+        // 3. No need to save to a separate token table (RFC 6238 is time-derived)
+        // However, we could still use a 'used' flag if we want strictly one-time use
+        // but for now, we'll go with pure TOTP.
 
         // 4. Send the email
         String subject = "Your Password Reset Code";
@@ -71,23 +64,15 @@ public class ResetPasswordService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Invalid code or email address"));
 
-        // 2. Find the token associated with this specific user and code
-        ResetPasswordToken resetToken = tokenRepository.findByCodeAndUser(code, user)
-                .orElseThrow(() -> new RuntimeException("Invalid code or email address"));
+        // 2. Verify the code using TotpService
+        boolean isValid = totpService.verifyCode(user.getTotpSecret(), code, 600);
 
-        // 3. Standard validations
-        if (resetToken.isExpired()) {
-            throw new RuntimeException("The code has expired.");
-        }
-        if (resetToken.isUsed()) {
-            throw new RuntimeException("This code has already been used.");
+        if (!isValid) {
+            throw new RuntimeException("Invalid or expired code.");
         }
 
-        // 4. Update password and mark token used
+        // 4. Update password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-
-        resetToken.setUsed(true);
-        tokenRepository.save(resetToken);
     }
 }

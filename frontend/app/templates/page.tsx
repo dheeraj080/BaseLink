@@ -22,12 +22,14 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { format } from 'date-fns';
 import { cn, handleError, showSuccess } from '@/lib/utils';
+import { TemplatePreviewModal } from '@/components/campaigns/TemplatePreviewModal';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
 
   const fetchTemplates = async () => {
@@ -216,7 +218,14 @@ export default function TemplatesPage() {
                     <Clock className="w-3.5 h-3.5 text-text-secondary/50" />
                     {template.updatedAt ? format(new Date(template.updatedAt), 'MMM d, yyyy') : 'Initialized'}
                   </div>
-                  <button id={`preview-template-${template.id}`} className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary hover:text-white flex items-center gap-2.5 transition-all bg-bg-primary px-4 py-2 rounded-xl border border-border-color group-hover:border-white/10">
+                  <button 
+                    id={`preview-template-${template.id}`} 
+                    onClick={() => {
+                      setSelectedTemplate(template);
+                      setIsPreviewOpen(true);
+                    }}
+                    className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-secondary hover:text-white flex items-center gap-2.5 transition-all bg-bg-primary px-4 py-2 rounded-xl border border-border-color group-hover:border-white/10"
+                  >
                     Inspected <Eye className="w-4 h-4" />
                   </button>
                 </div>
@@ -225,6 +234,13 @@ export default function TemplatesPage() {
           ))}
         </div>
       )}
+
+      {/* Preview Modal */}
+      <TemplatePreviewModal 
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        template={selectedTemplate}
+      />
 
       {/* Editor Modal */}
       <AnimatePresence>

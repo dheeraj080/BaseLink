@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
+
 
 const api = axios.create({
   baseURL: '/api/v1', // Assuming the app proxies to the backend
@@ -132,8 +134,16 @@ api.interceptors.response.use(
         window.location.href = '/auth/login';
       }
     }
+    if (error.response?.status === 429) {
+      toast.error('Too many requests. Please wait a few minutes and try again.', {
+        id: 'rate-limit-error', // Prevent duplicate toasts
+      });
+      return Promise.reject(error);
+    }
+
     return Promise.reject(error);
   }
 );
+
 
 export default api;

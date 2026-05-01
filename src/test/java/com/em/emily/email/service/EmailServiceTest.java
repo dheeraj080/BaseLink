@@ -111,7 +111,7 @@ class EmailServiceTest {
     }
 
     @Test
-    void sendEmailWithAttachment_Success() {
+    void sendEmailWithAttachments_Success() {
         // Arrange
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
         when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
@@ -119,7 +119,7 @@ class EmailServiceTest {
         when(emailRepository.save(any(EmailLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        emailService.sendEmailWithAttachment(to, subject, body, multipartFile);
+        emailService.sendEmailWithAttachments(to, null, null, null, subject, body, null, true, List.of(multipartFile));
 
         // Assert
         verify(mailSender).send(mimeMessage);
@@ -129,11 +129,11 @@ class EmailServiceTest {
         
         List<EmailLog> savedLogs = logCaptor.getAllValues();
         assertEquals(EmailStatus.SENT, savedLogs.get(1).getStatus());
-        assertTrue(savedLogs.get(0).getSubject().contains("[Attachment: test.pdf]"));
+        assertTrue(savedLogs.get(0).getSubject().contains("[Attachments]"));
     }
 
     @Test
-    void sendEmailWithAttachment_Failure() {
+    void sendEmailWithAttachments_Failure() {
         // Arrange
         when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
         when(multipartFile.getOriginalFilename()).thenReturn("test.pdf");
@@ -141,7 +141,7 @@ class EmailServiceTest {
         when(emailRepository.save(any(EmailLog.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         // Act
-        emailService.sendEmailWithAttachment(to, subject, body, multipartFile);
+        emailService.sendEmailWithAttachments(to, null, null, null, subject, body, null, true, List.of(multipartFile));
 
         // Assert
         ArgumentCaptor<EmailLog> logCaptor = ArgumentCaptor.forClass(EmailLog.class);

@@ -44,7 +44,7 @@ export default function RegisterPage() {
         email: data.email,
         password: data.password,
       });
-      router.push('/auth/login?registered=true');
+      router.push(`/auth/activate?email=${encodeURIComponent(data.email)}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');
     } finally {
