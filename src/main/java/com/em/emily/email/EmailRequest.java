@@ -25,7 +25,9 @@ public record EmailRequest(
 
         java.util.UUID userId,
         
-        Boolean isMarketing
+        Boolean isMarketing,
+
+        String cronExpression
 ) implements Serializable {
 
     public EmailRequest(
@@ -36,7 +38,7 @@ public record EmailRequest(
             String subject,
             String body
     ) {
-        this(to, cc, bcc, replyTo, subject, body, null, true);
+        this(to, cc, bcc, replyTo, subject, body, null, true, null);
     }
     
     public EmailRequest(
@@ -48,7 +50,7 @@ public record EmailRequest(
             String body,
             java.util.UUID userId
     ) {
-        this(to, cc, bcc, replyTo, subject, body, userId, true);
+        this(to, cc, bcc, replyTo, subject, body, userId, true, null);
     }
     
     public Boolean isMarketing() {

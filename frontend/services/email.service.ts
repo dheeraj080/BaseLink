@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { EmailTemplate, EmailRequest, EmailLog } from '@/types/api';
+import { EmailTemplate, EmailRequest, EmailLog, EmailDraft } from '@/types/api';
 
 let cachedLogs: EmailLog[] | null = null;
 let lastFetchTime = 0;
@@ -78,5 +78,24 @@ export const emailService = {
     cachedLogs = response.data;
     lastFetchTime = now;
     return response.data;
+  },
+  saveDraft: async (request: EmailRequest): Promise<EmailDraft> => {
+    const response = await api.post<EmailDraft>('/email/drafts', request);
+    return response.data;
+  },
+  updateDraft: async (id: number, request: EmailRequest): Promise<EmailDraft> => {
+    const response = await api.put<EmailDraft>(`/email/drafts/${id}`, request);
+    return response.data;
+  },
+  getDrafts: async (): Promise<EmailDraft[]> => {
+    const response = await api.get<EmailDraft[]>('/email/drafts');
+    return response.data;
+  },
+  getDraft: async (id: number): Promise<EmailDraft> => {
+    const response = await api.get<EmailDraft>(`/email/drafts/${id}`);
+    return response.data;
+  },
+  deleteDraft: async (id: number): Promise<void> => {
+    await api.delete(`/email/drafts/${id}`);
   },
 };

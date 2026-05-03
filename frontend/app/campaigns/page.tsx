@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { contactService, groupService } from '@/services/contact.service';
 import { emailService } from '@/services/email.service';
-import { Contact, EmailTemplate, EmailRequest, EmailLog, ContactGroup } from '@/types/api';
+import { Contact, EmailTemplate, EmailRequest, EmailLog, ContactGroup, EmailDraft } from '@/types/api';
 import {
   Send,
   Users,
@@ -31,6 +31,7 @@ import { LayoutBlueprints } from '@/components/campaigns/LayoutBlueprints';
 import { TelemetryLogSidebar } from '@/components/campaigns/TelemetryLogSidebar';
 import { TelemetryLogTable } from '@/components/campaigns/TelemetryLogTable';
 import { ScheduledQueueTable } from '@/components/campaigns/ScheduledQueueTable';
+import { DraftsTable } from '@/components/campaigns/DraftsTable';
 
 export default function CampaignsPage() {
   const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
@@ -43,8 +44,10 @@ export default function CampaignsPage() {
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [clusters, setContactGroups] = useState<ContactGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'queue'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'queue' | 'drafts'>('compose');
   const [scheduledJobs, setScheduledJobs] = useState<any[]>([]);
+  const [drafts, setDrafts] = useState<EmailDraft[]>([]);
+  const [currentDraftId, setCurrentDraftId] = useState<number | null>(null);
 
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -54,6 +57,7 @@ export default function CampaignsPage() {
   const [scheduledTime, setScheduledTime] = useState('');
   const [timezone, setTimezone] = useState('UTC');
   const [isMarketing, setIsMarketing] = useState(true);
+  const [cronExpression, setCronExpression] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
 
   const fetchData = async () => {
@@ -72,6 +76,8 @@ export default function CampaignsPage() {
       setContactGroups(Array.isArray(clusts) ? clusts : []);
       setAllContacts(Array.isArray(allC) ? allC : []);
       setScheduledJobs(Array.isArray(jobs) ? jobs : []);
+      const draftList = await emailService.getDrafts();
+      setDrafts(Array.isArray(draftList) ? draftList : []);
 
     } catch (error) {
       handleError(error, 'Failed to fetch campaign data');
@@ -100,6 +106,8 @@ export default function CampaignsPage() {
           setContactGroups(Array.isArray(clusts) ? clusts : []);
           setAllContacts(Array.isArray(allC) ? allC : []);
           setScheduledJobs(Array.isArray(jobs) ? jobs : []);
+          const draftList = await emailService.getDrafts();
+          setDrafts(Array.isArray(draftList) ? draftList : []);
           setLoading(false);
         }
       } catch (error) {
@@ -126,7 +134,8 @@ export default function CampaignsPage() {
         bcc: bccEmails.length > 0 ? bccEmails : undefined,
         subject,
         body,
-        isMarketing
+        isMarketing,
+        cronExpression: cronExpression || undefined
       };
       
       if (attachments.length > 0) {
@@ -142,6 +151,7 @@ export default function CampaignsPage() {
       setBccEmails([]);
       setBody('');
       setAttachments([]); // Clear attachments after send
+      setCurrentDraftId(null);
       fetchData(); // Refresh history
     } catch (error) {
       handleError(error, 'Failed to send campaign');
@@ -165,7 +175,8 @@ export default function CampaignsPage() {
         bcc: bccEmails.length > 0 ? bccEmails : undefined,
         subject,
         body,
-        isMarketing
+        isMarketing,
+        cronExpression: cronExpression || undefined
       };
 
       const offset = getTimezoneOffset(timezone, scheduledDate);
@@ -179,7 +190,9 @@ export default function CampaignsPage() {
       setBccEmails([]);
       setBody('');
       setScheduledTime('');
+      setCronExpression('');
       setShowScheduler(false);
+      setCurrentDraftId(null);
       fetchData(); // Refresh queue
     } catch (error) {
       handleError(error, 'Failed to schedule campaign');
@@ -203,6 +216,57 @@ export default function CampaignsPage() {
     if (template) {
       setSubject(template.subject || '');
       setBody(template.content || '');
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      const request: EmailRequest = {
+        to: toEmails,
+        cc: ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails.length > 0 ? bccEmails : undefined,
+        subject,
+        body,
+        isMarketing,
+        cronExpression: cronExpression || undefined
+      };
+
+      if (currentDraftId) {
+        await emailService.updateDraft(currentDraftId, request);
+        showSuccess('Draft updated successfully');
+      } else {
+        const newDraft = await emailService.saveDraft(request);
+        setCurrentDraftId(newDraft.id);
+        showSuccess('Draft saved successfully');
+      }
+      const draftList = await emailService.getDrafts();
+      setDrafts(draftList);
+    } catch (error) {
+      handleError(error, 'Failed to save draft');
+    }
+  };
+
+  const handleEditDraft = (draft: EmailDraft) => {
+    setToEmails(draft.to);
+    setCcEmails(draft.cc || []);
+    setBccEmails(draft.bcc || []);
+    setSubject(draft.subject);
+    setBody(draft.body);
+    setIsMarketing(draft.isMarketing);
+    setCronExpression(draft.cronExpression || '');
+    setCurrentDraftId(draft.id);
+    setActiveTab('compose');
+  };
+
+  const handleDeleteDraft = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this draft?')) return;
+    try {
+      await emailService.deleteDraft(id);
+      showSuccess('Draft deleted');
+      setDrafts(drafts.filter(d => d.id !== id));
+      if (currentDraftId === id) setCurrentDraftId(null);
+    } catch (error) {
+      handleError(error, 'Failed to delete draft');
     }
   };
 
@@ -246,6 +310,15 @@ export default function CampaignsPage() {
         >
           Pending Queue
         </button>
+        <button
+          onClick={() => setActiveTab('drafts')}
+          className={cn(
+            "px-8 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+            activeTab === 'drafts' ? "bg-white text-bg-primary shadow-2xl" : "text-text-secondary hover:text-white"
+          )}
+        >
+          Drafts
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
@@ -282,8 +355,11 @@ export default function CampaignsPage() {
               setIsMarketing={setIsMarketing}
               attachments={attachments}
               setAttachments={setAttachments}
+              cronExpression={cronExpression}
+              setCronExpression={setCronExpression}
               handleSend={handleSend}
               handleSchedule={handleSchedule}
+              handleSaveDraft={handleSaveDraft}
             />
 
             <div className="space-y-8">
@@ -314,6 +390,22 @@ export default function CampaignsPage() {
             transition={{ duration: 0.3 }}
           >
             <ScheduledQueueTable jobs={scheduledJobs} onCancel={handleCancelJob} />
+          </motion.div>
+        )}
+
+        {activeTab === 'drafts' && (
+          <motion.div
+            key="drafts"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <DraftsTable 
+              drafts={drafts} 
+              onEdit={handleEditDraft} 
+              onDelete={handleDeleteDraft} 
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useTransition, memo } from 'react';
-import { Send, Loader2, Calendar, Clock, Globe, X, Trash2, ChevronDown, ChevronUp, Paperclip, Plus, Search } from 'lucide-react';
+import { Send, Loader2, Calendar, Clock, Globe, X, Trash2, ChevronDown, ChevronUp, Paperclip, Plus, Search, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { CustomSelect } from '@/components/ui/Select';
 import { Contact, ContactGroup } from '@/types/api';
@@ -29,8 +29,11 @@ export interface ComposerProps {
   setIsMarketing: (val: boolean) => void;
   attachments: File[];
   setAttachments: (files: File[]) => void;
+  cronExpression: string;
+  setCronExpression: (cron: string) => void;
   handleSend: () => void;
   handleSchedule: () => void;
+  handleSaveDraft: () => void;
   onDraftSave?: (draft: Partial<ComposerProps>) => void;
   draftId?: string;
 }
@@ -62,6 +65,8 @@ interface SchedulerProps {
   setTimezone: (tz: string) => void;
   onQueue: () => void;
   disabled: boolean;
+  cronExpression: string;
+  setCronExpression: (cron: string) => void;
 }
 
 // --- Complete IANA Timezones Database ---
@@ -405,6 +410,18 @@ const Scheduler: React.FC<SchedulerProps> = memo(({
         </div>
       </div>
 
+      <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+        <Repeat className="w-3.5 h-3.5 text-white/40" />
+        <input
+          type="text"
+          value={cronExpression}
+          onChange={(e) => setCronExpression(e.target.value)}
+          placeholder="Cron (e.g. 0 0 12 * * ?)"
+          className="bg-transparent text-white text-xs outline-none w-[150px] placeholder:text-white/20"
+          aria-label="Cron expression"
+        />
+      </div>
+
       <Button
         variant="secondary"
         size="sm"
@@ -604,6 +621,7 @@ export const Composer: React.FC<ComposerProps> = (props) => {
     subject: props.subject,
     body: props.body,
     isMarketing: props.isMarketing,
+    cronExpression: props.cronExpression,
   });
 
   useEffect(() => {
@@ -616,17 +634,19 @@ export const Composer: React.FC<ComposerProps> = (props) => {
           subject: props.subject,
           body: props.body,
           isMarketing: props.isMarketing,
+          cronExpression: props.cronExpression,
         });
         props.onDraftSave?.({
           toEmails: props.toEmails,
           subject: props.subject,
           body: props.body,
+          cronExpression: props.cronExpression,
         });
       }
     }, 3000);
 
     return () => clearTimeout(timer);
-  }, [props.toEmails, props.ccEmails, props.bccEmails, props.subject, props.body, props.isMarketing, props.draftId, saveDraft, props.onDraftSave]);
+  }, [props.toEmails, props.ccEmails, props.bccEmails, props.subject, props.body, props.isMarketing, props.cronExpression, props.draftId, saveDraft, props.onDraftSave]);
 
   // Keyboard shortcuts
   const handleSendClick = useCallback(() => {
@@ -812,6 +832,15 @@ export const Composer: React.FC<ComposerProps> = (props) => {
           </Button>
 
           <Button
+            variant="secondary"
+            disabled={props.isSending}
+            onClick={props.handleSaveDraft}
+            className="h-12 px-10 rounded-full font-bold text-[10px] uppercase tracking-widest"
+          >
+            Save as Draft
+          </Button>
+
+          <Button
             variant="ghost"
             onClick={() => props.setShowScheduler(!props.showScheduler)}
             className="text-[10px] font-bold uppercase tracking-widest rounded-full"
@@ -828,6 +857,8 @@ export const Composer: React.FC<ComposerProps> = (props) => {
               setTimezone={props.setTimezone}
               onQueue={handleScheduleClick}
               disabled={props.isSending || !props.scheduledTime || props.toEmails.length === 0 || !props.subject || !props.body}
+              cronExpression={props.cronExpression}
+              setCronExpression={props.setCronExpression}
             />
           )}
         </div>

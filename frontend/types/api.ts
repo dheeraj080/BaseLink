@@ -56,6 +56,7 @@ export interface EmailRequest {
   subject: string;
   body: string;
   isMarketing?: boolean;
+  cronExpression?: string;
 }
 
 export interface BulkSelectionRequest {
@@ -114,4 +115,19 @@ export interface AnalyticsStatsDto {
   deliveryRate?: number;
   spamComplaintRate?: number;
   replyRate?: number;
+}
+
+export interface EmailDraft {
+  id: number;
+  userId: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  replyTo?: string;
+  subject: string;
+  body: string;
+  isMarketing: boolean;
+  cronExpression?: string;
+  createdAt: string;
+  updatedAt: string;
 }

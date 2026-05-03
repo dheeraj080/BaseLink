@@ -1,13 +1,26 @@
 # ---- build stage ----
-FROM eclipse-temurin:25-jre-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /app
 
-COPY target/*.jar app.jar
-RUN java -Djarmode=layertools -jar app.jar extract --destination target/extracted
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+RUN sed -i 's/\r$//' mvnw
+RUN chmod +x ./mvnw
+RUN ./mvnw dependency:go-offline -B
+
+COPY src src
+RUN ./mvnw clean package -DskipTests
+
+RUN java -Djarmode=layertools -jar target/*.jar extract --destination target/extracted
 
 # ---- runtime stage ----
 FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
+
+# Install network debugging tools
+RUN apk add --no-cache bind-tools iputils
 
 # Ensure we have a system group/users
 RUN addgroup -S spring && adduser -S spring -G spring
@@ -20,6 +33,7 @@ COPY --from=builder --chown=spring:spring /app/target/extracted/application/ ./
 
 USER spring:spring
 
+# Updated to 5000 to match Compose file
 EXPOSE 5000
 
 ENTRYPOINT ["java", \

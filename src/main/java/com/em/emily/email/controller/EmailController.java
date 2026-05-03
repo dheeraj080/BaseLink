@@ -1,11 +1,11 @@
 package com.em.emily.email.controller;
 
-
-import com.em.emily.email.config.RabbitConfig;
 import com.em.emily.email.EmailRequest;
+import com.em.emily.email.model.EmailDraft;
 import com.em.emily.email.model.EmailLog;
 import com.em.emily.email.quartz.EmailJob;
 import com.em.emily.email.repository.EmailRepository;
+import com.em.emily.email.service.EmailDraftService;
 import com.em.emily.email.service.EmailService;
 import com.em.emily.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -23,10 +23,11 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/v1/email")
-@RequiredArgsConstructor // Automatically generates the constructor
+@RequiredArgsConstructor
 public class EmailController {
 
     private final EmailService emailService;
+    private final EmailDraftService draftService;
     private final Scheduler scheduler;
     private final EmailRepository emailRepository;
 
@@ -83,7 +84,7 @@ public class EmailController {
                 request.to(),
                 request.cc(),
                 request.bcc(),
-                request.replyTo(), // Fix: pass replyTo from request
+                request.replyTo(),
                 request.subject(),
                 request.body(),
                 principal != null ? principal.id() : null,
@@ -101,17 +102,15 @@ public class EmailController {
 
         ZonedDateTime utcTime;
         try {
-            // Using OffsetDateTime first as it is more robust for strings with only offsets (e.g. +05:30)
             utcTime = java.time.OffsetDateTime.parse(scheduleTime).toZonedDateTime().withZoneSameInstant(ZoneOffset.UTC);
         } catch (java.time.format.DateTimeParseException e) {
-            return ResponseEntity.badRequest().body("Invalid scheduleTime format: " + scheduleTime + ". Expected ISO 8601 format (e.g. 2024-05-01T10:00:00+05:30)");
+            return ResponseEntity.badRequest().body("Invalid scheduleTime format: " + scheduleTime);
         }
 
         if (utcTime.isBefore(ZonedDateTime.now(ZoneOffset.UTC))) {
-            return ResponseEntity.badRequest().body("Cannot schedule emails in the past. Current UTC time is: " + ZonedDateTime.now(ZoneOffset.UTC));
+            return ResponseEntity.badRequest().body("Cannot schedule emails in the past.");
         }
 
-        // Save files via StorageService if present
         List<String> attachmentIds = new java.util.ArrayList<>();
         if (files != null && !files.isEmpty()) {
             try {
@@ -139,23 +138,25 @@ public class EmailController {
                     .usingJobData("attachmentIds", String.join(";", attachmentIds))
                     .build();
 
-            Trigger trigger = TriggerBuilder.newTrigger()
+            TriggerBuilder<Trigger> triggerBuilder = TriggerBuilder.newTrigger()
                     .withIdentity("trigger-" + UUID.randomUUID())
-                    .startAt(Date.from(utcTime.toInstant()))
-                    .withSchedule(SimpleScheduleBuilder.simpleSchedule()
-                            .withMisfireHandlingInstructionFireNow())
-                    .build();
+                    .startAt(Date.from(utcTime.toInstant()));
 
+            if (request.cronExpression() != null && !request.cronExpression().isBlank()) {
+                triggerBuilder.withSchedule(CronScheduleBuilder.cronSchedule(request.cronExpression())
+                        .withMisfireHandlingInstructionDoNothing());
+            } else {
+                triggerBuilder.withSchedule(SimpleScheduleBuilder.simpleSchedule()
+                        .withMisfireHandlingInstructionFireNow());
+            }
+
+            Trigger trigger = triggerBuilder.build();
             scheduler.scheduleJob(jobDetail, trigger);
-            return ResponseEntity.accepted().body("Email scheduled for: " + utcTime + " UTC");
-        } catch (SchedulerException e) {
-            return ResponseEntity.internalServerError().body("Scheduler failed: " + e.getMessage());
+            return ResponseEntity.accepted().body("Email scheduled.");
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Internal Error: " + e.getMessage());
         }
     }
-
-
 
     @PostMapping(value = "/send-with-attachments", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> sendEmailWithAttachments(
@@ -163,16 +164,61 @@ public class EmailController {
             @RequestPart(value = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
         emailService.sendEmailWithAttachments(
-                request.to(),
-                request.cc(),
-                request.bcc(),
-                request.replyTo(),
-                request.subject(),
-                request.body(),
-                principal != null ? principal.id() : null,
-                request.isMarketing(),
-                files
+                request.to(), request.cc(), request.bcc(), request.replyTo(),
+                request.subject(), request.body(), principal != null ? principal.id() : null,
+                request.isMarketing(), files
         );
-        return ResponseEntity.ok("Email with attachments queued for delivery.");
+        return ResponseEntity.ok("Email with attachments queued.");
+    }
+
+    // --- Drafts ---
+
+    @PostMapping("/drafts")
+    public ResponseEntity<?> createDraft(
+            @RequestBody EmailRequest request,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        try {
+            if (principal == null) return ResponseEntity.status(401).build();
+            return ResponseEntity.ok(draftService.saveDraft(request, principal.id()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to save draft: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/drafts")
+    public ResponseEntity<?> getDrafts(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        try {
+            if (principal == null) return ResponseEntity.status(401).build();
+            return ResponseEntity.ok(draftService.getDraftsByUser(principal.id()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Failed to fetch drafts: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/drafts/{id}")
+    public ResponseEntity<EmailDraft> getDraft(
+            @PathVariable Long id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(draftService.getDraft(id, principal.id()));
+    }
+
+    @PutMapping("/drafts/{id}")
+    public ResponseEntity<EmailDraft> updateDraft(
+            @PathVariable Long id,
+            @RequestBody EmailRequest request,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(draftService.updateDraft(id, request, principal.id()));
+    }
+
+    @DeleteMapping("/drafts/{id}")
+    public ResponseEntity<Void> deleteDraft(
+            @PathVariable Long id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
+        if (principal == null) return ResponseEntity.status(401).build();
+        draftService.deleteDraft(id, principal.id());
+        return ResponseEntity.noContent().build();
     }
 }
