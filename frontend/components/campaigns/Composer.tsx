@@ -337,7 +337,7 @@ const AttachmentList: React.FC<AttachmentListProps> = memo(({ attachments, onRem
 AttachmentList.displayName = 'AttachmentList';
 
 const Scheduler: React.FC<SchedulerProps> = memo(({
-  time, setTime, timezone, setTimezone, onQueue, disabled, cronExpression, setCronExpression
+  time, setTime, timezone, setTimezone, onQueue, disabled
 }) => {
   const [datePart, timePart] = (time || 'T').split('T');
   const [searchTerm, setSearchTerm] = useState('');
@@ -362,13 +362,7 @@ const Scheduler: React.FC<SchedulerProps> = memo(({
   }, [setTime, timePart]);
 
   const handleTimeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const timePart = e.target.value;
-    if (!timePart) return; // Prevent setting an incomplete/empty timestamp
-
-    // Get local YYYY-MM-DD instead of UTC to prevent date-shifting bugs
-    const fallbackDate = new Date().toLocaleDateString('sv-SE'); // 'sv-SE' format is always YYYY-MM-DD
-
-    setTime(`${datePart || fallbackDate}T${timePart}`);
+    setTime(`${datePart || new Date().toISOString().split('T')[0]}T${e.target.value}`);
   }, [setTime, datePart]);
 
   return (
