@@ -11,4 +11,8 @@ public interface EmailRepository extends JpaRepository<EmailLog, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT e.id FROM EmailLog e WHERE e.userId = :userId")
     List<Long> findIdsByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
+    @org.springframework.data.jpa.repository.Query("SELECT e.id FROM EmailLog e WHERE e.userId = :userId AND e.subject = :subject")
+    List<Long> findIdsByUserIdAndSubject(
+            @org.springframework.data.repository.query.Param("userId") UUID userId, 
+            @org.springframework.data.repository.query.Param("subject") String subject);
 }

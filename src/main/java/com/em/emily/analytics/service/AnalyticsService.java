@@ -40,12 +40,18 @@ public class AnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public AnalyticsStatsDto getStats(java.util.UUID userId) {
+    public AnalyticsStatsDto getStats(java.util.UUID userId, String subject) {
         if (userId == null) {
             return AnalyticsStatsDto.builder().build();
         }
-
-        java.util.List<Long> emailIds = emailRepository.findIdsByUserId(userId);
+        
+        java.util.List<Long> emailIds;
+        if (subject != null && !subject.equalsIgnoreCase("all")) {
+            emailIds = emailRepository.findIdsByUserIdAndSubject(userId, subject);
+        } else {
+            emailIds = emailRepository.findIdsByUserId(userId);
+        }
+        
         if (emailIds == null || emailIds.isEmpty()) {
             return AnalyticsStatsDto.builder().build();
         }
@@ -96,6 +102,11 @@ public class AnalyticsService {
                 .spamComplaintRate(spamComplaintRate)
                 .replyRate(replyRate)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public AnalyticsStatsDto getStats(java.util.UUID userId) {
+        return getStats(userId, null);
     }
     @Transactional(readOnly = true)
     public AnalyticsStatsDto getStatsForContact(String email) {
@@ -152,11 +163,18 @@ public class AnalyticsService {
     }
 
     @Transactional(readOnly = true)
-    public java.util.List<com.em.emily.analytics.dto.TimelinePointDto> getTimelineStats(java.util.UUID userId) {
+    public java.util.List<com.em.emily.analytics.dto.TimelinePointDto> getTimelineStats(java.util.UUID userId, String subject) {
         if (userId == null) {
             return java.util.Collections.emptyList();
         }
-        java.util.List<Long> emailIds = emailRepository.findIdsByUserId(userId);
+        
+        java.util.List<Long> emailIds;
+        if (subject != null && !subject.equalsIgnoreCase("all")) {
+            emailIds = emailRepository.findIdsByUserIdAndSubject(userId, subject);
+        } else {
+            emailIds = emailRepository.findIdsByUserId(userId);
+        }
+        
         if (emailIds == null || emailIds.isEmpty()) {
             return java.util.Collections.emptyList();
         }

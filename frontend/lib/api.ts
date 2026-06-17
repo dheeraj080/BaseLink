@@ -9,7 +9,7 @@ const api = axios.create({
   },
 });
 
-if (process.env.NEXT_PUBLIC_MOCK === 'true') {
+if (process.env.NEXT_PUBLIC_MOCK === 'false') {
   api.defaults.adapter = async (config) => {
     const url = config.url || '';
     const method = config.method?.toLowerCase() || 'get';
@@ -19,19 +19,19 @@ if (process.env.NEXT_PUBLIC_MOCK === 'true') {
         { id: 'mock_1', name: 'Alpha Sequence', email: 'alpha@matrix.io', phoneNo: '+1 (555) 0199', description: 'Priority vector telemetry', selected: false, createdAt: '2026-04-29T00:00:00Z', groups: [{ id: 'cluster_1', name: 'RECON' }] },
         { id: 'mock_2', name: 'Beta Layer', email: 'beta@matrix.io', phoneNo: '+1 (555) 0244', description: 'Secondary node buffer', selected: false, createdAt: '2026-04-28T00:00:00Z', groups: [{ id: 'cluster_2', name: 'MARKETING' }] }
       ],
-      stats: { 
-        totalSent: 150, 
-        totalDelivered: 148, 
-        totalOpened: 85, 
-        totalClicked: 42, 
-        totalReplied: 14, 
-        totalUnsubscribed: 3, 
-        totalBounced: 2, 
-        openRate: 57.4, 
-        clickThroughRate: 28.3, 
-        deliveryRate: 98.6, 
-        conversionRate: 15.9, 
-        activeCampaigns: 2 
+      stats: {
+        totalSent: 150,
+        totalDelivered: 148,
+        totalOpened: 85,
+        totalClicked: 42,
+        totalReplied: 14,
+        totalUnsubscribed: 3,
+        totalBounced: 2,
+        openRate: 57.4,
+        clickThroughRate: 28.3,
+        deliveryRate: 98.6,
+        conversionRate: 15.9,
+        activeCampaigns: 2
       },
       groups: [
         { id: 'cluster_1', name: 'RECON', description: 'Early diagnostic parameters' },

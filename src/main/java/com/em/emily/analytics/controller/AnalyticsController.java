@@ -21,20 +21,22 @@ public class AnalyticsController {
 
     @GetMapping("/stats")
     public ResponseEntity<AnalyticsStatsDto> getStats(
+            @RequestParam(required = false) String subject,
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
         if (principal == null) {
             return ResponseEntity.ok(AnalyticsStatsDto.builder().build());
         }
-        return ResponseEntity.ok(analyticsService.getStats(principal.id()));
+        return ResponseEntity.ok(analyticsService.getStats(principal.id(), subject));
     }
 
     @GetMapping("/stats/timeline")
     public ResponseEntity<java.util.List<com.em.emily.analytics.dto.TimelinePointDto>> getTimeline(
+            @RequestParam(required = false) String subject,
             @org.springframework.security.core.annotation.AuthenticationPrincipal com.em.emily.auth.UserPrincipal principal) {
         if (principal == null) {
             return ResponseEntity.ok(java.util.Collections.emptyList());
         }
-        return ResponseEntity.ok(analyticsService.getTimelineStats(principal.id()));
+        return ResponseEntity.ok(analyticsService.getTimelineStats(principal.id(), subject));
     }
 
     @PostMapping("/events")

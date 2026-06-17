@@ -2,8 +2,10 @@ import api from '@/lib/api';
 import { AnalyticsStatsDto, EventRequest } from '@/types/api';
 
 export const analyticsService = {
-  getStats: async (): Promise<AnalyticsStatsDto> => {
-    const response = await api.get<AnalyticsStatsDto>('/analytics/stats');
+  getStats: async (subject?: string): Promise<AnalyticsStatsDto> => {
+    const response = await api.get<AnalyticsStatsDto>('/analytics/stats', {
+      params: { subject }
+    });
     return response.data;
   },
   recordEvent: async (event: EventRequest): Promise<void> => {
@@ -13,8 +15,10 @@ export const analyticsService = {
     const response = await api.get<AnalyticsStatsDto>(`/analytics/contact?email=${encodeURIComponent(email)}`);
     return response.data;
   },
-  getTimeline: async (): Promise<any[]> => {
-    const response = await api.get<any[]>('/analytics/stats/timeline');
+  getTimeline: async (subject?: string): Promise<any[]> => {
+    const response = await api.get<any[]>('/analytics/stats/timeline', {
+      params: { subject }
+    });
     return response.data;
   },
 };

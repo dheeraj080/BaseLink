@@ -134,7 +134,8 @@ public class ContactController {
                     request.subject(),
                     request.body(),
                     principal.id(),
-                    request.isMarketing()
+                    request.isMarketing(),
+                    request.cronExpression()
             );
 
             rabbitTemplate.convertAndSend(

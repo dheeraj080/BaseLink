@@ -85,6 +85,24 @@ export default function AnalyticsPage() {
     return () => { isMounted = false; };
   }, []);
 
+  useEffect(() => {
+    if (!mounted) return;
+    
+    const fetchCampaignStats = async () => {
+      try {
+        setLoading(true);
+        const statsData = await analyticsService.getStats(selectedCampaign === 'all' ? undefined : selectedCampaign);
+        setStats(statsData);
+        setLoading(false);
+      } catch (error) {
+        handleError(error, 'Failed to update campaign stats');
+        setLoading(false);
+      }
+    };
+
+    fetchCampaignStats();
+  }, [selectedCampaign, mounted]);
+
   const filteredLogs = useMemo(() => {
     let result = logs;
     if (filterClusterId !== 'all') {
@@ -104,86 +122,24 @@ export default function AnalyticsPage() {
   }, [logs, contacts, filterClusterId, filterMode]);
 
   const campaigns = useMemo(() => {
-    const uniqueSubjects = Array.from(new Set(filteredLogs.map(log => log.subject)));
+    const uniqueSubjects = Array.from(new Set(logs.map(log => log.subject)));
     return uniqueSubjects.map(subject => {
-      const campaignLogs = filteredLogs.filter(l => l.subject === subject);
+      const campaignLogs = logs.filter(l => l.subject === subject);
       const total = campaignLogs.length;
       const sent = campaignLogs.filter(l => l.status === 'SENT').length;
       const failed = campaignLogs.filter(l => l.status === 'FAILED').length;
       
-      // Since backend interaction stats are global only, 
-      // we'll assign some proportional mock stats for the UI demo
-      // In real scenarios, these would come from an API filter
-      const openRate = 0;
-      const clickRate = 0;
-
       return {
         subject,
         total,
         sent,
         failed,
-        openRate,
-        clickRate,
         deliveryRate: total > 0 ? sent / total : 0
       };
     });
-  }, [filteredLogs, stats]);
+  }, [logs]);
 
-  const filteredStats = useMemo(() => {
-    if (filterClusterId === 'all' && selectedCampaign === 'all') {
-      return stats;
-    }
-
-    if (selectedCampaign !== 'all') {
-      const campaign = campaigns.find(c => c.subject === selectedCampaign);
-      if (!campaign) return stats;
-
-      return {
-        totalSent: campaign.sent,
-        totalDelivered: campaign.sent, 
-        totalOpened: Math.floor(campaign.sent * campaign.openRate),
-        totalClicked: Math.floor(campaign.sent * campaign.clickRate),
-        totalUnsubscribed: Math.floor(campaign.sent * 0.01),
-        totalBounced: campaign.failed,
-        totalSpamComplaints: 0,
-        totalReplied: Math.floor(campaign.sent * 0.12),
-        openRate: campaign.openRate,
-        clickThroughRate: campaign.clickRate,
-        deliveryRate: campaign.deliveryRate,
-        unsubscribeRate: 0.01,
-        bounceRate: campaign.total > 0 ? campaign.failed / campaign.total : 0,
-        clickToOpenRate: campaign.openRate > 0 ? campaign.clickRate / campaign.openRate : 0,
-        spamComplaintRate: 0,
-        replyRate: 0.12
-      };
-    }
-
-    const total = filteredLogs.length;
-    const sent = filteredLogs.filter(l => l.status === 'SENT').length;
-    const failed = filteredLogs.filter(l => l.status === 'FAILED').length;
-    
-    const openRate = 0;
-    const clickRate = 0;
-
-    return {
-      totalSent: sent,
-      totalDelivered: sent,
-      totalOpened: Math.floor(sent * openRate),
-      totalClicked: Math.floor(sent * clickRate),
-      totalUnsubscribed: Math.floor(sent * 0.01),
-      totalBounced: failed,
-      totalSpamComplaints: 0,
-      totalReplied: Math.floor(sent * 0.08),
-      openRate,
-      clickThroughRate: clickRate,
-      deliveryRate: total > 0 ? sent / total : 0,
-      unsubscribeRate: 0.01,
-      bounceRate: total > 0 ? failed / total : 0,
-      clickToOpenRate: openRate > 0 ? clickRate / openRate : 0,
-      spamComplaintRate: 0,
-      replyRate: 0.08
-    };
-  }, [selectedCampaign, filterClusterId, stats, campaigns, filteredLogs]);
+  const filteredStats = stats;
 
   const formatPercent = (val: number | undefined) => {
     if (val === undefined) return 0;
