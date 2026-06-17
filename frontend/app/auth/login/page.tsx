@@ -118,7 +118,7 @@ export default function LoginPage() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       const origin = event.origin;
-      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost') && !origin.includes('onrender.com')) {
         return;
       }
 
