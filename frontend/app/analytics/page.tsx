@@ -5,12 +5,12 @@ import { analyticsService } from '@/services/analytics.service';
 import { emailService } from '@/services/email.service';
 import { AnalyticsStatsDto, EmailLog, Contact, ContactGroup } from '@/types/api';
 import { contactService, groupService } from '@/services/contact.service';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  PieChart, 
-  Activity, 
-  ArrowUpRight, 
+import {
+  BarChart3,
+  TrendingUp,
+  PieChart,
+  Activity,
+  ArrowUpRight,
   ArrowDownRight,
   Loader2,
   Calendar,
@@ -43,7 +43,7 @@ import { CampaignIntelligence } from '@/components/analytics/CampaignIntelligenc
 import { LiveSystemLogs } from '@/components/analytics/LiveSystemLogs';
 
 export default function AnalyticsPage() {
-    const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [stats, setStats] = useState<AnalyticsStatsDto | null>(null);
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -57,7 +57,7 @@ export default function AnalyticsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     let isMounted = true;
-    
+
     const loadData = async () => {
       try {
         const [statsData, logsData, contactsData, groupsData] = await Promise.all([
@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    
+
     const fetchCampaignStats = async () => {
       try {
         setLoading(true);
@@ -128,13 +128,19 @@ export default function AnalyticsPage() {
       const total = campaignLogs.length;
       const sent = campaignLogs.filter(l => l.status === 'SENT').length;
       const failed = campaignLogs.filter(l => l.status === 'FAILED').length;
-      
+
       return {
         subject,
         total,
         sent,
         failed,
-        deliveryRate: total > 0 ? sent / total : 0
+        // If deliveryRate expects a percentage (e.g. 98), multiply by 100. 
+        // If it expects a decimal (e.g. 0.98), leave it as sent / total.
+        deliveryRate: total > 0 ? (sent / total) * 100 : 0,
+
+        // Hardcode these to 0 for now since the logs don't track them yet
+        openRate: 0,
+        clickRate: 0
       };
     });
   }, [logs]);
@@ -166,8 +172,8 @@ export default function AnalyticsPage() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <motion.div
-           initial={{ opacity: 0, y: -10 }}
-           animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-soft-linen tracking-tight">Performance Analytics</h1>
@@ -175,7 +181,7 @@ export default function AnalyticsPage() {
           </div>
           <p className="text-silver text-sm">Monitor your campaign effectiveness and audience engagement.</p>
         </motion.div>
-        
+
         <div className="flex flex-wrap items-center gap-3">
           <CustomSelect
             options={[
@@ -223,13 +229,13 @@ export default function AnalyticsPage() {
 
         <div className="border-t border-onyx-400/50 pt-8">
           <h3 className="text-xs font-bold text-soft-linen/40 uppercase tracking-widest mb-6 ml-2">Conversion Thresholds</h3>
-          <ConversionThresholds 
-            rates={rates.concat({ 
-              label: 'Delivery Rate', 
-              value: formatPercent(filteredStats?.deliveryRate), 
-              color: 'bg-green-400' 
-            })} 
-            loading={loading} 
+          <ConversionThresholds
+            rates={rates.concat({
+              label: 'Delivery Rate',
+              value: formatPercent(filteredStats?.deliveryRate),
+              color: 'bg-green-400'
+            })}
+            loading={loading}
           />
         </div>
       </div>

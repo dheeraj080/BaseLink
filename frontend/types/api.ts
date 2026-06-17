@@ -74,6 +74,8 @@ export interface TokenResponse {
   expiresIn?: number;
   tokenType?: string;
   user?: UserDTO;
+  mfaRequired?: boolean;
+  mfaToken?: string;
 }
 
 export interface LoginRequest {
