@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/api/public", "/api/v1/analytics/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/favicon.ico", "/css/**", "/js/**", "/images/**").permitAll()
                         // ADD THIS LINE BEFORE anyRequest()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
