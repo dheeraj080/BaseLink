@@ -1,0 +1,90 @@
+services:
+  # 1. Backend Web Service
+  - type: web
+    name: emily-backend
+    runtime: docker
+    plan: free
+    port: 5000
+    envVars:
+      - key: DB_USERNAME
+        fromDatabase:
+          name: emily-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: emily-db
+          property: password
+      - key: spring.datasource.url
+        fromDatabase:
+          name: emily-db
+          property: jdbcConnectionstring
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: emily-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: emily-redis
+          property: port
+      - key: spring.data.redis.password
+        fromService:
+          type: redis
+          name: emily-redis
+          property: password
+      - key: spring.data.redis.ssl.enabled
+        value: "false" # Render private Redis doesn't require SSL inside the private network
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false # User will fill this in with their frontend URL after deployment
+      - key: RABBITMQ_USER
+        sync: false # CloudAMQP credentials
+      - key: RABBITMQ_PASSWORD
+        sync: false
+      - key: spring.rabbitmq.host
+        sync: false
+      - key: spring.rabbitmq.port
+        value: "5672"
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MANAGEMENT_HEALTH_MAIL_ENABLED
+        value: "false"
+      - key: APP_ENCRYPTION_KEY
+        generateValue: true # Render will automatically generate a secure key
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+
+  # 2. Frontend Web Service
+  - type: web
+    name: emily-frontend
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm run start
+    rootDir: frontend
+    envVars:
+      - key: NEXT_PUBLIC_BACKEND_URL
+        fromService:
+          type: web
+          name: emily-backend
+          property: host
+
+# 3. Databases & Cache
+databases:
+  - name: emily-db
+    plan: free
+    databaseName: email_db
+    user: postgres
+
+redis:
+  - name: emily-redis
+    plan: free
+    ipAllowList: [] # Only allow internal connection from backend

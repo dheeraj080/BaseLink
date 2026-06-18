@@ -97,6 +97,36 @@ To run tests:
 mvn test
 ```
 
+## 🚢 Deployment Options
+
+### Option 1: One-Click Deploy to Render
+You can deploy the complete stack (Backend, Frontend, Database, and Redis cache) directly to Render in one click:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render.button.svg)](https://render.com/deploy?repo=https://github.com/dheeraj080/EmILY)
+
+*Note: Make sure to change your **Health Check Path** in the Render service settings to `/actuator/health` instead of `/`.*
+
+---
+
+### Option 2: VM Deployment (using Docker Compose)
+To run the complete application on a Virtual Machine (like AWS EC2, DigitalOcean, etc.), follow these steps:
+
+1. Install Docker & Docker Compose on your VM:
+   ```bash
+   sudo apt update && sudo apt install docker.io docker-compose-v2 -y
+   ```
+2. Clone this repository and create a `.env` configuration file in the root folder:
+   ```bash
+   git clone https://github.com/dheeraj080/EmILY.git && cd EmILY
+   nano .env
+   ```
+3. Configure your production variables in the `.env` file (e.g. SMTP, OAuth Secrets, and `NEXT_PUBLIC_BACKEND_URL=http://<YOUR_VM_PUBLIC_IP>:5000`).
+4. Build and start the entire stack:
+   ```bash
+   docker compose up -d --build
+   ```
+The frontend will be accessible at `http://<YOUR_VM_PUBLIC_IP>:3000` and the backend at `http://<YOUR_VM_PUBLIC_IP>:5000`.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

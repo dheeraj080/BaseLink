@@ -12,7 +12,8 @@ import {
   Database,
   Save,
   Loader2,
-  Camera
+  Camera,
+  Mail
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn, showSuccess } from '@/lib/utils';
@@ -20,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function SettingsPage() {
   const { user, updateUser } = useAuth();
@@ -73,10 +75,10 @@ export default function SettingsPage() {
               <Globe className="w-4 h-4" />
               Integrations
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-silver hover:text-white-smoke hover:bg-onyx transition-all rounded-lg">
-              <Database className="w-4 h-4" />
-              API Settings
-            </button>
+            <Link href="/settings/email" className="w-full flex items-center gap-3 px-4 py-2 text-sm font-medium text-silver hover:text-white-smoke hover:bg-onyx transition-all rounded-lg">
+              <Mail className="w-4 h-4" />
+              Email Settings
+            </Link>
           </div>
         </aside>
 

@@ -75,6 +75,20 @@ services:
     networks:
       - email-net
 
+  email-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: email-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:5000}
+    depends_on:
+      - email-backend
+    networks:
+      - email-net
+
 networks:
   email-net:
     driver: bridge
