@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @ActiveProfiles("test")
 @WithMockUser // This will provide a default mock user
-public class EmIlyIntegrationTest {
+public class EmIlyIntegrationTest extends AbstractIntegrationTest {
 
     private MockMvc mockMvc;
 

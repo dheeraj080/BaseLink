@@ -1,5 +1,6 @@
 package com.em.emily.auth;
 
+import com.em.emily.AbstractIntegrationTest;
 import com.em.emily.auth.dto.LoginRequest;
 import com.em.emily.auth.entity.Role;
 import com.em.emily.auth.entity.User;
@@ -41,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.mail.properties.mail.smtp.from=no-reply@emily.com"
 })
 @ActiveProfiles("test")
-public class AuthIntegrationTest {
+public class AuthIntegrationTest extends AbstractIntegrationTest {
 
     private MockMvc mockMvc;
 

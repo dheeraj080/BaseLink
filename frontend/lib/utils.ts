@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { toast } from 'react-hot-toast'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -10,7 +11,7 @@ export function handleError(error: any, fallbackMessage: string = 'An unexpected
 }
 
 export function showSuccess(message: string) {
-  console.log('SUCCESS:', message);
+  toast.success(message);
 }
 
 /**

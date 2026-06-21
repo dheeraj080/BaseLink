@@ -15,39 +15,21 @@ import { analyticsService } from '@/services/analytics.service';
 import { CustomSelect } from '@/components/ui/Select';
 
 export function PerformanceChart() {
+  const [allTimelineData, setAllTimelineData] = useState<any[]>([]);
   const [trendData, setTrendData] = useState<any[]>([]);
+  const [timeframe, setTimeframe] = useState('Last 30 Days');
+  const [showCustomRange, setShowCustomRange] = useState(false);
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   useEffect(() => {
     async function loadTimeline() {
       try {
         const timeline = await analyticsService.getTimeline();
-        if (Array.isArray(timeline) && timeline.length > 0) {
-          const formatted = timeline.map(point => {
-            // point.date is usually string "YYYY-MM-DD"
-            const date = point.date ? new Date(point.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today';
-            const oRate = point.sent > 0 ? (point.opens / point.sent) * 100 : 0;
-            const cRate = point.sent > 0 ? (point.clicks / point.sent) * 100 : 0;
-            return {
-              week: date,
-              sent: point.sent,
-              opens: point.opens,
-              clicks: point.clicks,
-              unsubscribed: point.unsubscribed,
-              openRate: parseFloat(oRate.toFixed(1)),
-              clickRate: parseFloat(cRate.toFixed(1))
-            };
-          });
-
-          if (formatted.length === 1) {
-            setTrendData([
-              { week: 'Baseline', sent: 0, opens: 0, clicks: 0, unsubscribed: 0, openRate: 0, clickRate: 0 },
-              formatted[0]
-            ]);
-          } else {
-            setTrendData(formatted);
-          }
+        if (Array.isArray(timeline)) {
+          setAllTimelineData(timeline);
         } else {
-          setTrendData([]);
+          setAllTimelineData([]);
         }
       } catch (e) {
         console.error(e);
@@ -55,8 +37,69 @@ export function PerformanceChart() {
     }
     loadTimeline();
   }, []);
-  const [timeframe, setTimeframe] = useState('Last 30 Days');
-  const [showCustomRange, setShowCustomRange] = useState(false);
+
+  useEffect(() => {
+    if (allTimelineData.length === 0) {
+      setTrendData([]);
+      return;
+    }
+
+    let filtered = [...allTimelineData];
+    const now = new Date();
+
+    if (timeframe !== 'Custom Range...') {
+      let daysToKeep = 30;
+      if (timeframe === 'Last 7 Days') daysToKeep = 7;
+      else if (timeframe === 'Last 14 Days') daysToKeep = 14;
+      else if (timeframe === 'Last 30 Days') daysToKeep = 30;
+      else if (timeframe === 'Last 90 Days') daysToKeep = 90;
+      else if (timeframe === 'Last 6 Months') daysToKeep = 180;
+      else if (timeframe === 'Last 1 Year') daysToKeep = 365;
+
+      const cutoffDate = new Date();
+      cutoffDate.setDate(now.getDate() - daysToKeep);
+      cutoffDate.setHours(0, 0, 0, 0);
+
+      filtered = allTimelineData.filter(point => {
+        if (!point.date) return false;
+        const pointDate = new Date(point.date + 'T00:00:00');
+        return pointDate >= cutoffDate;
+      });
+    } else {
+      if (customStart) {
+        const startDate = new Date(customStart + 'T00:00:00');
+        filtered = filtered.filter(point => point.date && new Date(point.date + 'T00:00:00') >= startDate);
+      }
+      if (customEnd) {
+        const endDate = new Date(customEnd + 'T00:00:00');
+        filtered = filtered.filter(point => point.date && new Date(point.date + 'T00:00:00') <= endDate);
+      }
+    }
+
+    const formatted = filtered.map(point => {
+      const date = point.date ? new Date(point.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Today';
+      const oRate = point.sent > 0 ? (point.opens / point.sent) * 100 : 0;
+      const cRate = point.sent > 0 ? (point.clicks / point.sent) * 100 : 0;
+      return {
+        week: date,
+        sent: point.sent,
+        opens: point.opens,
+        clicks: point.clicks,
+        unsubscribed: point.unsubscribed,
+        openRate: parseFloat(oRate.toFixed(1)),
+        clickRate: parseFloat(cRate.toFixed(1))
+      };
+    });
+
+    if (formatted.length === 1) {
+      setTrendData([
+        { week: 'Baseline', sent: 0, opens: 0, clicks: 0, unsubscribed: 0, openRate: 0, clickRate: 0 },
+        formatted[0]
+      ]);
+    } else {
+      setTrendData(formatted);
+    }
+  }, [allTimelineData, timeframe, customStart, customEnd]);
 
   const timeframes = [
     'Last 7 Days',
@@ -108,12 +151,12 @@ export function PerformanceChart() {
         <div className="mb-8 flex items-center gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
           <div className="flex items-center gap-3 bg-bg-primary border border-border-color px-4 py-2 rounded-xl">
             <Calendar className="w-4 h-4 text-text-secondary" />
-            <input type="date" className="bg-transparent text-[10px] text-text-secondary outline-none border-none font-bold uppercase tracking-widest" defaultValue="2024-01-01" />
+            <input type="date" className="bg-transparent text-[10px] text-text-secondary outline-none border-none font-bold uppercase tracking-widest" value={customStart} onChange={(e) => setCustomStart(e.target.value)} />
           </div>
           <span className="text-text-secondary text-[10px] font-bold uppercase tracking-widest">to</span>
           <div className="flex items-center gap-3 bg-bg-primary border border-border-color px-4 py-2 rounded-xl">
             <Calendar className="w-4 h-4 text-text-secondary" />
-            <input type="date" className="bg-transparent text-[10px] text-text-secondary outline-none border-none font-bold uppercase tracking-widest" defaultValue="2024-12-31" />
+            <input type="date" className="bg-transparent text-[10px] text-text-secondary outline-none border-none font-bold uppercase tracking-widest" value={customEnd} onChange={(e) => setCustomEnd(e.target.value)} />
           </div>
         </div>
       )}

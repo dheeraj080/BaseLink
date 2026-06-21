@@ -19,7 +19,6 @@ import {
   ChevronRight,
   Plus
 } from 'lucide-react';
-import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { motion, AnimatePresence } from 'motion/react';

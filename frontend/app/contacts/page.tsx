@@ -29,7 +29,6 @@ import { format } from 'date-fns';
 import { cn, handleError, showSuccess } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
 import { analyticsService } from '@/services/analytics.service';
 import { ContactAddModal } from '@/components/contacts/ContactAddModal';
 import { ImportSummaryModal } from '@/components/contacts/ImportSummaryModal';

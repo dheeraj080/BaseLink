@@ -1,5 +1,7 @@
 package com.em.emily.email;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -24,11 +26,34 @@ public record EmailRequest(
         String body,
 
         java.util.UUID userId,
-        
+
         Boolean isMarketing,
 
         String cronExpression
 ) implements Serializable {
+
+    @JsonCreator
+    public EmailRequest(
+            @JsonProperty("to") java.util.List<String> to,
+            @JsonProperty("cc") java.util.List<String> cc,
+            @JsonProperty("bcc") java.util.List<String> bcc,
+            @JsonProperty("replyTo") String replyTo,
+            @JsonProperty("subject") String subject,
+            @JsonProperty("body") String body,
+            @JsonProperty("userId") java.util.UUID userId,
+            @JsonProperty("isMarketing") Boolean isMarketing,
+            @JsonProperty("cronExpression") String cronExpression
+    ) {
+        this.to = to;
+        this.cc = cc;
+        this.bcc = bcc;
+        this.replyTo = replyTo;
+        this.subject = subject;
+        this.body = body;
+        this.userId = userId;
+        this.isMarketing = isMarketing;
+        this.cronExpression = cronExpression;
+    }
 
     public EmailRequest(
             java.util.List<String> to,

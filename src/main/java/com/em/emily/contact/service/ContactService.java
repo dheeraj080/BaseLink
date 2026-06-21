@@ -122,6 +122,7 @@ public class ContactService {
     }
 
     @Transactional
+    @Cacheable(value = "contacts", key = "#userId")
     public List<Contact> getAllUserContacts(UUID userId) {
         List<Contact> contacts = contactRepository.findByUserId(userId);
         contacts.forEach(contact -> {
@@ -133,6 +134,7 @@ public class ContactService {
     }
 
     @Transactional
+    @Cacheable(value = "selected_contacts", key = "#userId")
     public List<Contact> getSelectedContacts(UUID userId) {
         List<Contact> contacts = contactRepository.findByUserIdAndSelected(userId, true);
         contacts.forEach(contact -> {

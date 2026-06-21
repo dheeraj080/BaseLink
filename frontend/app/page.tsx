@@ -2,12 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAnalytics } from '@/contexts/AnalyticsContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { analyticsService } from '@/services/analytics.service';
 import { emailService } from '@/services/email.service';
 import { contactService } from '@/services/contact.service';
-import { AnalyticsStatsDto, EmailLog } from '@/types/api';
+import { EmailLog } from '@/types/api';
 import {
   Users,
   Mail,
@@ -29,31 +29,28 @@ import { RecentBroadcasts } from '@/components/dashboard/RecentBroadcasts';
 
 export default function Page() {
   const { user, loading } = useAuth();
+  // Consume from context — avoids a duplicate network request since
+  // AnalyticsProvider already fetches global stats on mount.
+  const { globalStats: stats, loading: isStatsLoading } = useAnalytics();
   const router = useRouter();
-  const [stats, setStats] = useState<AnalyticsStatsDto | null>(null);
   const [logs, setLogs] = useState<EmailLog[]>([]);
   const [totalContacts, setTotalContacts] = useState(0);
   const [totalTemplates, setTotalTemplates] = useState(0);
-  const [isStatsLoading, setIsStatsLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       const fetchDashboardData = async () => {
         try {
-          const [statsData, logsData, contactsData, templatesData] = await Promise.all([
-            analyticsService.getStats(),
+          const [logsData, contactsData, templatesData] = await Promise.all([
             emailService.getLogs(),
             contactService.getContacts(),
             emailService.listTemplates()
           ]);
-          setStats(statsData);
           setLogs(Array.isArray(logsData) ? logsData.slice(0, 5) : []);
           setTotalContacts(Array.isArray(contactsData) ? contactsData.length : 0);
           setTotalTemplates(Array.isArray(templatesData) ? templatesData.length : 0);
         } catch (error) {
-          console.error('Failed to fetch stats', error);
-        } finally {
-          setIsStatsLoading(false);
+          console.error('Failed to fetch dashboard data', error);
         }
       };
       fetchDashboardData();

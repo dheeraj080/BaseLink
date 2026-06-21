@@ -37,7 +37,7 @@ import static org.mockito.Mockito.verify;
         "spring.mail.properties.mail.smtp.from=no-reply@emily.com"
 })
 @ActiveProfiles("test")
-public class MessagingFlowTest {
+public class MessagingFlowTest extends AbstractIntegrationTest {
 
     @Autowired
     private EmailEventListener emailEventListener; // This will be the spy

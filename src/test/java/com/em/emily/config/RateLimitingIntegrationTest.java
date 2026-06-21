@@ -1,5 +1,6 @@
 package com.em.emily.config;
 
+import com.em.emily.AbstractIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.google.client-secret=mock-secret"
 })
 @ActiveProfiles("test")
-public class RateLimitingIntegrationTest {
+public class RateLimitingIntegrationTest extends AbstractIntegrationTest {
 
     private MockMvc mockMvc;
 

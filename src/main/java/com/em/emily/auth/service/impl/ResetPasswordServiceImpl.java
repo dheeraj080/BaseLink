@@ -1,4 +1,3 @@
 package com.em.emily.auth.service.impl;
 
-public class ResetPasswordServiceImpl {
-}
+// Deprecated. ResetPasswordService logic is implemented directly in ResetPasswordService.

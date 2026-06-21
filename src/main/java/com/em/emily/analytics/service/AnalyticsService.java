@@ -65,43 +65,7 @@ public class AnalyticsService {
         long spam = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.SPAM_COMPLAINT, emailIds);
         long replied = repository.countDistinctEmailIdByEventTypeAndEmailIdIn(EmailEventType.REPLIED, emailIds);
 
-        double openRate = delivered > 0 ? ((double) opened / delivered) * 100 : 0.0;
-        double ctr = sent > 0 ? ((double) clicked / sent) * 100 : 0.0;
-        double ctor = opened > 0 ? ((double) clicked / opened) * 100 : 0.0;
-        double unsubscribeRate = delivered > 0 ? ((double) unsubscribed / delivered) * 100 : 0.0;
-        double bounceRate = sent > 0 ? ((double) bounced / sent) * 100 : 0.0;
-        double deliveryRate = sent > 0 ? ((double) delivered / sent) * 100 : 0.0;
-        double spamComplaintRate = delivered > 0 ? ((double) spam / delivered) * 100 : 0.0;
-        double replyRate = delivered > 0 ? ((double) replied / delivered) * 100 : 0.0;
-
-        // Round to 2 decimal places
-        openRate = Math.round(openRate * 100.0) / 100.0;
-        ctr = Math.round(ctr * 100.0) / 100.0;
-        ctor = Math.round(ctor * 100.0) / 100.0;
-        unsubscribeRate = Math.round(unsubscribeRate * 100.0) / 100.0;
-        bounceRate = Math.round(bounceRate * 100.0) / 100.0;
-        deliveryRate = Math.round(deliveryRate * 100.0) / 100.0;
-        spamComplaintRate = Math.round(spamComplaintRate * 100.0) / 100.0;
-        replyRate = Math.round(replyRate * 100.0) / 100.0;
-
-        return AnalyticsStatsDto.builder()
-                .totalSent(sent)
-                .totalDelivered(delivered)
-                .totalOpened(opened)
-                .totalClicked(clicked)
-                .totalUnsubscribed(unsubscribed)
-                .totalBounced(bounced)
-                .totalSpamComplaints(spam)
-                .totalReplied(replied)
-                .openRate(openRate)
-                .clickThroughRate(ctr)
-                .clickToOpenRate(ctor)
-                .unsubscribeRate(unsubscribeRate)
-                .bounceRate(bounceRate)
-                .deliveryRate(deliveryRate)
-                .spamComplaintRate(spamComplaintRate)
-                .replyRate(replyRate)
-                .build();
+        return buildStats(sent, delivered, opened, clicked, unsubscribed, bounced, spam, replied);
     }
 
     @Transactional(readOnly = true)
@@ -123,6 +87,11 @@ public class AnalyticsService {
         long spam = repository.countDistinctEmailIdByEventTypeAndRecipient(EmailEventType.SPAM_COMPLAINT, email);
         long replied = repository.countDistinctEmailIdByEventTypeAndRecipient(EmailEventType.REPLIED, email);
 
+        return buildStats(sent, delivered, opened, clicked, unsubscribed, bounced, spam, replied);
+    }
+
+    private AnalyticsStatsDto buildStats(long sent, long delivered, long opened, long clicked,
+                                         long unsubscribed, long bounced, long spam, long replied) {
         double openRate = delivered > 0 ? ((double) opened / delivered) * 100 : 0.0;
         double ctr = sent > 0 ? ((double) clicked / sent) * 100 : 0.0;
         double ctor = opened > 0 ? ((double) clicked / opened) * 100 : 0.0;

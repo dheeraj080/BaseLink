@@ -49,10 +49,7 @@ public class RateLimitingService {
     }
 
     public Bucket resolveBucket(String key, BucketType type) {
-        BucketConfiguration configuration = BucketConfiguration.builder()
-                .addLimit(Bandwidth.classic(type.getCapacity(), Refill.greedy(type.getCapacity(), type.getDuration())))
-                .build();
-
+        BucketConfiguration configuration = buildConfiguration(type);
         String storageKey = type.name() + ":" + key;
 
         if (useRedis) {
@@ -75,8 +72,21 @@ public class RateLimitingService {
             }
         }
 
-        return localFallbackCache.computeIfAbsent(storageKey, k -> Bucket.builder()
+        return localFallbackCache.computeIfAbsent(storageKey,
+                k -> Bucket.builder()
+                        .addLimit(Bandwidth.classic(type.getCapacity(), Refill.greedy(type.getCapacity(), type.getDuration())))
+                        .build());
+    }
+
+    /**
+     * Builds a {@link BucketConfiguration} for the given {@link BucketType}.
+     * Centralises the rate-limit parameters so they cannot drift between the
+     * Redis-backed and in-memory fallback paths.
+     */
+    private BucketConfiguration buildConfiguration(BucketType type) {
+        return BucketConfiguration.builder()
                 .addLimit(Bandwidth.classic(type.getCapacity(), Refill.greedy(type.getCapacity(), type.getDuration())))
-                .build());
+                .build();
     }
 }
+

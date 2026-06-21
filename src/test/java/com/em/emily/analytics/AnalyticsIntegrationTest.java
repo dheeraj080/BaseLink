@@ -1,5 +1,6 @@
 package com.em.emily.analytics;
 
+import com.em.emily.AbstractIntegrationTest;
 import com.em.emily.analytics.dto.AnalyticsStatsDto;
 import com.em.emily.analytics.dto.EventRequest;
 import com.em.emily.auth.UserPrincipal;
@@ -36,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.google.client-secret=mock-secret"
 })
 @ActiveProfiles("test")
-public class AnalyticsIntegrationTest {
+public class AnalyticsIntegrationTest extends AbstractIntegrationTest {
 
     private MockMvc mockMvc;
 

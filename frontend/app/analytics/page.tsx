@@ -40,7 +40,6 @@ const PerformanceChart = dynamic(() => import('@/components/PerformanceChart').t
 import { StatCards } from '@/components/analytics/StatCards';
 import { ConversionThresholds } from '@/components/analytics/ConversionThresholds';
 import { CampaignIntelligence } from '@/components/analytics/CampaignIntelligence';
-import { LiveSystemLogs } from '@/components/analytics/LiveSystemLogs';
 
 export default function AnalyticsPage() {
   const [mounted, setMounted] = useState(false);
@@ -246,8 +245,6 @@ export default function AnalyticsPage() {
       </div>
 
       <CampaignIntelligence campaigns={campaigns} selectedCampaign={selectedCampaign} />
-
-      <LiveSystemLogs totalSent={stats?.totalSent || 0} totalBounced={stats?.totalBounced || 0} />
     </div>
   );
 }

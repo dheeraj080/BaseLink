@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 })
 @ActiveProfiles("test")
 @RabbitListenerTest(spy = true)
-public class MessagingHarnessTest {
+public class MessagingHarnessTest extends AbstractIntegrationTest {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;

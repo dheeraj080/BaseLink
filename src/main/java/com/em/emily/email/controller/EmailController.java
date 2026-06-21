@@ -11,7 +11,6 @@ import com.em.emily.storage.service.StorageService;
 import lombok.RequiredArgsConstructor;
 import org.quartz.*;
 import org.quartz.impl.matchers.GroupMatcher;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,8 +29,6 @@ public class EmailController {
     private final EmailDraftService draftService;
     private final Scheduler scheduler;
     private final EmailRepository emailRepository;
-
-    private final RabbitTemplate rabbitTemplate;
     private final StorageService storageService;
 
     @GetMapping("/status")

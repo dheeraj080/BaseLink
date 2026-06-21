@@ -9,7 +9,7 @@ const api = axios.create({
   },
 });
 
-if (process.env.NEXT_PUBLIC_MOCK === 'false') {
+if (process.env.NEXT_PUBLIC_MOCK === 'true') {
   api.defaults.adapter = async (config) => {
     const url = config.url || '';
     const method = config.method?.toLowerCase() || 'get';

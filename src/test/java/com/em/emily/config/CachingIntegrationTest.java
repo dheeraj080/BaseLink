@@ -1,5 +1,6 @@
 package com.em.emily.config;
 
+import com.em.emily.AbstractIntegrationTest;
 import com.em.emily.contact.entity.Contact;
 import com.em.emily.contact.repository.ContactRepository;
 import com.em.emily.contact.service.ContactService;
@@ -22,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.security.oauth2.client.registration.google.client-secret=mock-secret"
 })
 @ActiveProfiles("test")
-public class CachingIntegrationTest {
+public class CachingIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private ContactService contactService;
