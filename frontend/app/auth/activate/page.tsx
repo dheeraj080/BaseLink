@@ -174,7 +174,7 @@ export default function ActivatePage() {
                 </button>
 
                 <p className="text-center text-xs font-semibold text-silver mt-4">
-                  Didn't get a code? Check your spam folder or{' '}
+                  Didn&apos;t get a code? Check your spam folder or{' '}
                   <Link href="/auth/register" className="text-soft-linen hover:text-white-smoke transition-colors uppercase tracking-wider">
                     try again
                   </Link>

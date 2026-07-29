@@ -1,6 +1,8 @@
 {
   "name": "BaseLink",
-  "description": "Enterprise Contact Management and Email Marketing Platform",
+  "description": "Open Source Deployment Platform - Deploy anything. Own everything.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

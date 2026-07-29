@@ -39,26 +39,26 @@ export function CustomSelect({ options, value, onChange, placeholder = "Select o
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 rounded-xl h-11 px-4 flex items-center justify-between text-white text-xs font-medium cursor-pointer transition-all outline-none shadow-sm"
+        className="w-full apple-glass border border-white/10 hover:border-white/20 rounded-xl h-10 px-3.5 flex items-center justify-between text-white text-xs font-semibold tracking-tight cursor-pointer transition-all duration-150 outline-none shadow-sm active:scale-[0.98] apple-edge-highlight"
       >
         <span className={cn("truncate", !selectedOption && "text-text-secondary")}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={cn("w-4 h-4 text-white/30 transition-transform duration-200", isOpen && "rotate-180")} />
+        <ChevronDown className={cn("w-4 h-4 text-white/40 transition-transform duration-200", isOpen && "rotate-180")} />
       </button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.15 }}
-            className="absolute z-50 mt-2 w-full bg-[#0a0a0c] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.25 }}
+            className="absolute z-50 mt-1.5 w-full apple-material-thick border border-white/15 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto apple-edge-highlight"
           >
             <div className="p-1.5 space-y-0.5">
               {options.length === 0 ? (
-                <p className="text-[10px] text-text-secondary/40 text-center py-4 italic uppercase tracking-widest">No options</p>
+                <p className="text-xs text-text-secondary text-center py-4 italic">No options</p>
               ) : (
                 options.map(option => (
                   <button
@@ -69,14 +69,14 @@ export function CustomSelect({ options, value, onChange, placeholder = "Select o
                       setIsOpen(false);
                     }}
                     className={cn(
-                      "w-full text-left px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between",
+                      "w-full text-left px-3.5 py-2 rounded-lg text-xs font-semibold tracking-tight transition-all flex items-center justify-between active:scale-[0.98]",
                       option.value === value 
-                        ? "bg-white text-bg-primary" 
-                        : "text-white/80 hover:bg-white/5 hover:text-white"
+                        ? "bg-white text-black font-bold shadow-sm" 
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
                     )}
                   >
                     <span className="truncate">{option.label}</span>
-                    {option.value === value && <Check className="w-3.5 h-3.5" />}
+                    {option.value === value && <Check className="w-3.5 h-3.5 text-black" />}
                   </button>
                 ))
               )}

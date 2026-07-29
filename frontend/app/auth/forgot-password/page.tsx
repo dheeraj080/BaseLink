@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
                 <div>
                   <h3 className="text-xl font-bold text-soft-linen mb-2">Check your inbox</h3>
                   <p className="text-silver text-sm leading-relaxed">
-                    If an account exists for that email, we've sent a 6-digit verification code to reset your password.
+                    If an account exists for that email, we&apos;ve sent a 6-digit verification code to reset your password.
                   </p>
                 </div>
                 <Link

@@ -48,7 +48,7 @@ export function ContactAddModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/90 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-black/70 backdrop-blur-md overflow-y-auto">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -57,105 +57,109 @@ export function ContactAddModal({
             onClick={onClose}
           />
           <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            initial={{ scale: 0.96, opacity: 0, y: 16 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="bg-bg-primary border border-border-color rounded-[32px] md:rounded-[40px] w-full max-w-xl shadow-modal relative z-10 flex flex-col max-h-[90vh]"
+            exit={{ scale: 0.96, opacity: 0, y: 16 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="apple-material-thick rounded-[28px] w-full max-w-xl shadow-2xl relative z-10 flex flex-col max-h-[90vh] overflow-hidden apple-edge-highlight"
           >
             <form onSubmit={handleFormSubmit} className="flex flex-col h-full overflow-hidden">
               {/* Header */}
-               <div className="px-6 py-6 md:px-10 md:py-8 border-b border-border-color flex items-center justify-between bg-surface-primary/30 flex-shrink-0">
+              <div className="px-6 py-5 md:px-8 md:py-6 border-b border-white/10 flex items-center justify-between apple-glass-bar shrink-0">
                 <div className="flex-1">
-                  <h3 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-                    {editingContact ? 'Modify Subscriber' : 'Add Subscriber'}
+                  <h3 className="text-xl font-bold text-white tracking-tight">
+                    {editingContact ? 'Edit Subscriber' : 'Add Subscriber'}
                   </h3>
-                  <div className="flex gap-4 mt-2">
+                  <div className="flex gap-2 mt-2">
                     {!editingContact && (
-                      <>
+                      <div className="inline-flex p-1 bg-white/5 border border-white/10 rounded-xl">
                         <button 
                           type="button" 
                           onClick={() => setMode('single')}
-                          className={cn("text-[9px] font-bold uppercase tracking-widest transition-colors", mode === 'single' ? "text-white" : "text-text-secondary hover:text-white")}
+                          className={cn(
+                            "px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                            mode === 'single' ? "bg-white text-black shadow-sm" : "text-text-secondary hover:text-white"
+                          )}
                         >
                           Single Entry
                         </button>
                         <button 
                           type="button" 
                           onClick={() => setMode('bulk')}
-                          className={cn("text-[9px] font-bold uppercase tracking-widest transition-colors", mode === 'bulk' ? "text-white" : "text-text-secondary hover:text-white")}
+                          className={cn(
+                            "px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                            mode === 'bulk' ? "bg-white text-black shadow-sm" : "text-text-secondary hover:text-white"
+                          )}
                         >
-                          Bulk Initialize
+                          Bulk Import
                         </button>
-                      </>
+                      </div>
                     )}
                     {editingContact && (
-                       <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest leading-none">Update existing configuration</p>
+                      <p className="text-xs font-medium text-text-secondary">Update subscriber details and categories</p>
                     )}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-surface-primary border border-border-color hover:bg-white hover:text-bg-primary rounded-xl md:rounded-2xl transition-all shadow-xl"
+                  className="p-2 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 text-text-secondary hover:text-white transition-all cursor-pointer"
                 >
-                  <X className="w-5 h-5 md:w-6 md:h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Body */}
-              <div className="p-6 md:p-12 space-y-8 md:space-y-10 overflow-y-auto flex-grow">
+              <div className="p-6 md:p-8 space-y-6 overflow-y-auto flex-grow">
                 {mode === 'single' ? (
                   <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input
                         label="Subscriber Name"
                         name="name"
-                        placeholder="e.g. SUB_01"
+                        placeholder="e.g. Jane Doe"
                         defaultValue={editingContact?.name || ''}
-                        className="bg-surface-primary border-border-color rounded-2xl h-12 md:h-14"
                       />
                       <Input
-                        label="Telemetry"
+                        label="Phone Number"
                         name="phoneNo"
-                        placeholder="+1..."
+                        placeholder="+1 (555) 000-0000"
                         defaultValue={editingContact?.phoneNo || ''}
-                        className="bg-surface-primary border-border-color rounded-2xl h-12 md:h-14"
                       />
                     </div>
 
                     <Input
-                      label="Primary Protocol (Email)"
+                      label="Email Address"
                       name="email"
                       type="email"
-                      placeholder="subscriber@baselink.com"
+                      placeholder="subscriber@example.com"
                       required
                       defaultValue={editingContact?.email || ''}
-                      className="bg-surface-primary border-border-color rounded-2xl h-12 md:h-14"
                     />
                   </>
                 ) : (
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">
-                      Bulk Protocol Payload (Emails)
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-semibold text-text-secondary tracking-tight ml-1">
+                      Bulk Email Payload
                     </label>
                     <textarea
                       value={bulkEmails}
                       onChange={(e) => setBulkEmails(e.target.value)}
                       placeholder="Enter emails separated by commas or newlines..."
-                      rows={8}
-                      className="w-full bg-surface-primary border border-border-color rounded-[24px] py-6 px-6 outline-none focus:border-white transition-all placeholder:text-border-color text-sm font-medium text-white resize-none font-mono"
-                    ></textarea>
-                    <p className="text-[9px] font-bold text-text-secondary/40 ml-1 uppercase tracking-[0.1em]">Separators: Comma, Newline, Semicolon</p>
+                      rows={6}
+                      className="w-full apple-glass rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-white/20 transition-all placeholder:text-text-secondary/40 text-xs font-medium text-white resize-none font-mono apple-edge-highlight"
+                    />
+                    <p className="text-[11px] text-text-secondary ml-1">Separators supported: comma, newline, semicolon</p>
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">
-                    Assign Operational Categories
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold text-text-secondary tracking-tight ml-1">
+                    Assign Contact Groups
                   </label>
-                  <div className="flex flex-wrap gap-2.5 p-3 md:p-4 bg-surface-primary border border-border-color rounded-2xl">
+                  <div className="flex flex-wrap gap-2 p-3 apple-glass rounded-xl apple-edge-highlight">
                     {availableGroups.length === 0 ? (
-                      <span className="text-[10px] text-text-secondary italic">No standard category definitions found.</span>
+                      <span className="text-xs text-text-secondary italic">No groups found. Create one first.</span>
                     ) : (
                       availableGroups.map((group) => {
                         const isChecked = selectedGroups.includes(group.id!);
@@ -171,10 +175,10 @@ export function ContactAddModal({
                               }
                             }}
                             className={cn(
-                              "text-[10px] font-bold px-3 py-2 md:px-3.5 md:py-2 rounded-full border transition-all uppercase tracking-widest",
+                              "text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all active:scale-95 cursor-pointer",
                               isChecked
-                                ? "bg-white text-bg-primary border-white"
-                                : "bg-surface-primary text-text-secondary border-border-color hover:text-white"
+                                ? "bg-white text-black border-white font-bold shadow-sm"
+                                : "apple-glass text-text-secondary border-white/10 hover:text-white"
                             )}
                           >
                             {group.name}
@@ -185,39 +189,37 @@ export function ContactAddModal({
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-[0.2em] ml-1">
-                    Metadata Buffer
+                <div className="space-y-2">
+                  <label className="text-[11px] font-semibold text-text-secondary tracking-tight ml-1">
+                    Notes & Metadata
                   </label>
                   <textarea
                     name="description"
-                    placeholder="Inject internal logic notes..."
+                    placeholder="Add internal notes..."
                     rows={3}
                     defaultValue={editingContact?.description || ''}
-                    className="w-full bg-surface-primary border border-border-color rounded-[24px] py-4 px-6 outline-none focus:border-white transition-all placeholder:text-border-color text-xs font-medium text-white resize-none"
-                  ></textarea>
+                    className="w-full apple-glass rounded-xl py-3 px-4 outline-none focus:ring-2 focus:ring-white/20 transition-all placeholder:text-text-secondary/40 text-xs font-medium text-white resize-none apple-edge-highlight"
+                  />
                 </div>
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-6 md:px-10 md:py-8 border-t border-border-color flex items-center gap-5 bg-surface-primary/30 flex-shrink-0">
+              <div className="px-6 py-4 md:px-8 md:py-5 border-t border-white/10 flex items-center gap-3 apple-glass-bar shrink-0">
                 <Button
                   variant="secondary"
                   fullWidth
                   type="button"
                   onClick={onClose}
-                  className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]"
                 >
-                  Abort
+                  Cancel
                 </Button>
                 <Button
                   fullWidth
                   type="submit"
                   disabled={loading}
-                  leftIcon={loading && <Loader2 className="w-5 h-5 animate-spin" />}
-                  className="h-12 rounded-full font-bold uppercase tracking-widest text-[10px]"
+                  loading={loading}
                 >
-                  {editingContact ? 'Commit Update' : 'Initialize Subscriber'}
+                  {editingContact ? 'Save Changes' : 'Add Subscriber'}
                 </Button>
               </div>
             </form>

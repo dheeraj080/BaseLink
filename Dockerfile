@@ -25,6 +25,13 @@ RUN apk add --no-cache bind-tools iputils
 # Ensure we have a system group/users
 RUN addgroup -S spring && adduser -S spring -G spring
 
+# ===== ADD THIS SECTION =====
+# Create storage directory with proper permissions BEFORE switching to spring user
+RUN mkdir -p /app/storage/scheduled_attachments && \
+    chown -R spring:spring /app/storage && \
+    chmod -R 755 /app/storage
+# ============================
+
 # Copying layers
 COPY --from=builder --chown=spring:spring /app/target/extracted/dependencies/ ./
 COPY --from=builder --chown=spring:spring /app/target/extracted/spring-boot-loader/ ./

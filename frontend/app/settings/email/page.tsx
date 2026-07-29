@@ -42,11 +42,32 @@ export default function EmailSettingsPage() {
   const [isTesting, setIsTesting] = useState(false);
 
   useEffect(() => {
-    fetchConfig();
+    let active = true;
+    const loadConfig = async () => {
+      try {
+        const response = await api.get('/email/config');
+        if (active && response.data && response.data.configured) {
+          const data = response.data;
+          setProvider(data.providerType);
+          setFromEmail(data.fromEmail || '');
+          setSmtpHost(data.smtpHost || '');
+          setSmtpPort(data.smtpPort ? String(data.smtpPort) : '');
+          setSmtpUsername(data.smtpUsername || '');
+          setApiKey(data.apiKey || '');
+        }
+      } catch (error: any) {
+        if (active) toast.error('Failed to load email configurations');
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+    loadConfig();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const fetchConfig = async () => {
-    setIsLoading(true);
     try {
       const response = await api.get('/email/config');
       if (response.data && response.data.configured) {

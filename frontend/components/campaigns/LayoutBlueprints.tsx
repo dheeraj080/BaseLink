@@ -9,22 +9,22 @@ interface LayoutBlueprintsProps {
 
 export function LayoutBlueprints({ templates, applyTemplate }: LayoutBlueprintsProps) {
   return (
-    <div className="bg-[#0a0a0c] border border-white/5 p-8 rounded-[32px] shadow-2xl">
-      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary mb-6 flex items-center gap-2">
-        <FileText className="w-4 h-4" /> Layout Blueprints
+    <div className="apple-glass-card border border-white/10 p-6 rounded-[22px] shadow-xl apple-edge-highlight">
+      <h3 className="text-xs font-bold text-white mb-4 flex items-center gap-2 tracking-tight">
+        <FileText className="w-4 h-4 text-white/80" /> Templates & Layouts
       </h3>
-      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2">
+      <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
         {templates.length === 0 ? (
-          <p className="text-center text-text-secondary/20 italic text-xs py-4">No frameworks.</p>
+          <p className="text-center text-text-secondary text-xs py-4">No templates available.</p>
         ) : (
           templates.map(t => (
             <button
               key={t.id}
               onClick={() => applyTemplate(t.id!)}
-              className="w-full p-4 bg-white/[0.01] hover:bg-white/[0.03] border border-white/5 rounded-xl text-left flex items-center justify-between group transition-colors"
+              className="w-full p-3.5 apple-glass hover:bg-white/10 rounded-xl text-left flex items-center justify-between group transition-all duration-150 active:scale-[0.98] cursor-pointer apple-edge-highlight"
             >
-              <span className="text-xs font-bold text-white/80 group-hover:text-white truncate">{t.name}</span>
-              <Plus className="w-4 h-4 text-white/20 group-hover:text-white transition-colors" />
+              <span className="text-xs font-bold text-white/90 group-hover:text-white truncate tracking-tight">{t.name}</span>
+              <Plus className="w-4 h-4 text-text-secondary group-hover:text-white transition-colors" />
             </button>
           ))
         )}

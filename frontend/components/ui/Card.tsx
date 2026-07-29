@@ -11,14 +11,14 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       none: '',
       sm: 'p-4',
       md: 'p-6',
-      lg: 'p-10',
+      lg: 'p-8 sm:p-10',
     };
 
     return (
       <div
         ref={ref}
         className={cn(
-          "bg-surface-primary border border-border-color rounded-xl shadow-sm overflow-hidden",
+          "apple-glass-card rounded-[22px] border border-white/10 overflow-hidden apple-edge-highlight transition-all duration-200 hover:border-white/20",
           paddingClasses[padding],
           className
         )}

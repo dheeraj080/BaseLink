@@ -19,7 +19,6 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
 
   const refreshGlobalStats = async () => {
     try {
-      setLoading(true);
       const stats = await analyticsService.getStats();
       setGlobalStats(stats);
     } catch (err) {
@@ -39,7 +38,23 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    refreshGlobalStats();
+    let isMounted = true;
+    async function loadStats() {
+      try {
+        const stats = await analyticsService.getStats();
+        if (isMounted) {
+          setGlobalStats(stats);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch global stats', err);
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadStats();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return (

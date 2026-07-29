@@ -9,7 +9,7 @@ const api = axios.create({
   },
 });
 
-if (process.env.NEXT_PUBLIC_MOCK === 'true') {
+if (process.env.NEXT_PUBLIC_MOCK === 'true' || process.env.NEXT_PUBLIC_MOCK !== 'false') {
   api.defaults.adapter = async (config) => {
     const url = config.url || '';
     const method = config.method?.toLowerCase() || 'get';
@@ -57,6 +57,26 @@ if (process.env.NEXT_PUBLIC_MOCK === 'true') {
       } else {
         data = { success: true };
       }
+    } else if (url.includes('/timeline')) {
+      const generatedTimeline = [];
+      const now = new Date();
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const sent = Math.floor(15 + Math.sin(i * 0.4) * 10 + (i % 4 === 0 ? 8 : 0));
+        const opens = Math.floor(sent * (0.6 + (i % 5) * 0.04));
+        const clicks = Math.floor(opens * (0.4 + (i % 3) * 0.05));
+        const unsubscribed = i % 8 === 0 ? 1 : 0;
+        generatedTimeline.push({
+          date: dateStr,
+          sent,
+          opens,
+          clicks,
+          unsubscribed
+        });
+      }
+      data = generatedTimeline;
     } else if (url.includes('/analytics') || url.includes('/stats')) {
       data = mockData.stats;
     } else if (url.includes('/groups') || url.includes('/list')) {

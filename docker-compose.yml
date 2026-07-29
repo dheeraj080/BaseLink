@@ -8,25 +8,34 @@ services:
       POSTGRES_DB: email_db
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
-      - "5001:5432"
+      - "5432:5432"
     networks:
       - email-net
     volumes:
+      # Change from /var/lib/postgresql/data to /var/lib/postgresql
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d email_db"]
-      interval: 5s
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d email_db" ]
+      interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   email-redis:
     image: redis:latest
     container_name: email-redis
+    # No password set
     ports:
       - "6379:6379"
     networks:
       - email-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   email-rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -39,13 +48,17 @@ services:
       - "15672:15672"
     networks:
       - email-net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   email-backend:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: email-backend
-    # Explicitly set DNS to bypass host/VPN restrictions
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -54,9 +67,12 @@ services:
     env_file:
       - .env
     environment:
-      - REDIS_HOST=email-redis
+      # Override any .env values for Docker
       - DB_USERNAME=${DB_USERNAME:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - REDIS_HOST=email-redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=email-rabbitmq
       - RABBITMQ_USER=${RABBITMQ_USER:-guest}
       - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest}
       - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
@@ -65,15 +81,26 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
       - MAIL_USERNAME=${MAIL_USERNAME}
       - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-AdminPassword123!}
+      - APP_ENCRYPTION_KEY=${APP_ENCRYPTION_KEY:-12345678901234567890123456789012}
+      - APP_STORAGE_PATH=/app/storage/scheduled_attachments
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME:-local-dev-bucket}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - storage_data:/app/storage
     depends_on:
       email-db:
         condition: service_healthy
       email-rabbitmq:
-        condition: service_started
+        condition: service_healthy
       email-redis:
-        condition: service_started
+        condition: service_healthy
     networks:
       - email-net
+    restart: unless-stopped
 
   email-frontend:
     build:
@@ -95,3 +122,4 @@ networks:
 
 volumes:
   pgdata:
+  storage_data:

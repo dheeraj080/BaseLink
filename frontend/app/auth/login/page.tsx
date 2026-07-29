@@ -42,13 +42,12 @@ export default function LoginPage() {
     resolver: zodResolver(mfaSchema),
   });
 
-  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
-      setLastUsedProvider(localStorage.getItem('lastUsedProvider'));
+      return localStorage.getItem('lastUsedProvider');
     }
-  }, []);
+    return null;
+  });
 
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
@@ -70,6 +69,27 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMockLogin = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const response = await authService.login({
+        email: 'admin@baselink.io',
+        password: 'password123',
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastUsedProvider', 'CREDENTIALS');
+      }
+      login(response);
+      toast.success('Logged in with Demo Account');
+      router.push('/');
+    } catch (err: any) {
+      setError('Failed to log in with demo account.');
     } finally {
       setIsSubmitting(false);
     }
@@ -297,6 +317,17 @@ export default function LoginPage() {
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
+                  </button>
+
+                  <button
+                    id="mock-login-button"
+                    type="button"
+                    onClick={handleMockLogin}
+                    disabled={isSubmitting}
+                    className="w-full bg-onyx hover:bg-onyx-100 text-soft-linen border border-onyx-400 rounded-xl py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all mt-3 active:scale-[0.99]"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-silver" />
+                    Quick Demo / Mock Login
                   </button>
 
                   <div className="relative my-8">

@@ -729,32 +729,32 @@ export const Composer: React.FC<ComposerProps> = (props) => {
 
   return (
     <ComposerErrorBoundary onError={(err) => setError(err.message)}>
-      <div className="xl:col-span-2 space-y-8 bg-[#0a0a0c] border border-white/5 p-10 rounded-[32px] shadow-2xl">
+      <div className="xl:col-span-2 space-y-6 apple-glass-card border border-white/10 p-6 sm:p-8 rounded-[24px] shadow-2xl apple-edge-highlight">
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 animate-in slide-in-from-top-2 fade-in duration-200">
-            <p className="text-red-400 text-xs font-medium">{error}</p>
+          <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3.5 animate-in slide-in-from-top-2 fade-in duration-200">
+            <p className="text-rose-400 text-xs font-semibold">{error}</p>
           </div>
         )}
 
-        <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Send className="w-4 h-4" />
-            Message Command Center
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-white flex items-center gap-2.5 tracking-tight">
+            <Send className="w-4 h-4 text-white/80" />
+            Email Composer
             {allRecipientsCount.total > 0 && (
-              <span className="ml-2 text-[9px] bg-white/5 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-semibold bg-white/10 text-white/80 px-2.5 py-0.5 rounded-full">
                 {allRecipientsCount.total} recipient{allRecipientsCount.total !== 1 ? 's' : ''}
               </span>
             )}
-          </span>
+          </h2>
           <button
             onClick={() => setShowMore(!showMore)}
-            className="flex items-center gap-1 hover:text-white transition-colors"
+            className="flex items-center gap-1 text-xs font-semibold text-text-secondary hover:text-white transition-colors cursor-pointer"
             aria-label={showMore ? "Hide CC/BCC" : "Show CC/BCC"}
           >
-            {showMore ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {showMore ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             {showMore ? "Hide CC/BCC" : "Show CC/BCC"}
           </button>
-        </h2>
+        </div>
 
         <RecipientSection
           label="To"
@@ -767,7 +767,7 @@ export const Composer: React.FC<ComposerProps> = (props) => {
         />
 
         {showMore && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 fade-in duration-200">
             <RecipientSection
               label="CC"
               emails={props.ccEmails}
@@ -792,26 +792,26 @@ export const Composer: React.FC<ComposerProps> = (props) => {
             value={props.subject}
             onChange={(e) => props.setSubject(e.target.value)}
             placeholder="Subject Line"
-            className="w-full h-14 bg-white/[0.02] border border-white/5 rounded-2xl px-6 text-white text-sm focus:border-white/20 outline-none transition-all"
+            className="w-full h-12 apple-glass rounded-xl px-4 text-white text-sm focus:ring-2 focus:ring-white/20 outline-none transition-all placeholder:text-text-secondary/40 apple-edge-highlight"
             aria-label="Email subject"
           />
           <textarea
             value={props.body}
             onChange={(e) => props.setBody(e.target.value)}
-            placeholder="Compose sequential protocol logic..."
+            placeholder="Write your email content..."
             rows={10}
-            className="w-full bg-white/[0.02] border border-white/5 rounded-[24px] p-6 text-white text-sm focus:border-white/20 outline-none transition-all resize-none font-mono"
+            className="w-full apple-glass rounded-xl p-4 text-white text-sm focus:ring-2 focus:ring-white/20 outline-none transition-all resize-none font-sans placeholder:text-text-secondary/40 apple-edge-highlight"
             aria-label="Email body"
           />
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest ml-1 flex items-center gap-2">
-                <Paperclip className="w-3 h-3" /> Binary Attachments
-                <span className="text-[8px] text-text-secondary/40">(Max 10MB each)</span>
+              <span className="text-xs font-semibold text-text-secondary flex items-center gap-1.5 ml-1">
+                <Paperclip className="w-3.5 h-3.5" /> File Attachments
+                <span className="text-[11px] text-text-secondary/60">(Max 10MB each)</span>
               </span>
-              <label className="text-[9px] font-bold text-indigo-400 hover:text-white cursor-pointer uppercase tracking-widest transition-colors flex items-center gap-1.5">
-                <Plus className="w-3 h-3" /> Upload Files
+              <label className="text-xs font-semibold text-white/80 hover:text-white cursor-pointer transition-colors flex items-center gap-1">
+                <Plus className="w-3.5 h-3.5" /> Upload File
                 <input
                   type="file"
                   multiple
@@ -821,38 +821,36 @@ export const Composer: React.FC<ComposerProps> = (props) => {
                 />
               </label>
             </div>
-            <div className="flex flex-wrap gap-2 min-h-[44px] p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+            <div className="flex flex-wrap gap-2 min-h-[40px] p-3 apple-glass rounded-xl apple-edge-highlight">
               <AttachmentList attachments={props.attachments} onRemove={removeAttachment} />
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4 border-t border-white/5">
+        <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-white/10">
           <Button
             disabled={props.isSending || props.toEmails.length === 0 || !props.subject || !props.body}
             onClick={handleSendClick}
-            className="h-12 px-10 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-lg"
-            leftIcon={props.isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            loading={props.isSending}
+            leftIcon={!props.isSending ? <Send className="w-4 h-4" /> : undefined}
           >
-            {props.isSending ? 'Deploying...' : 'Deploy Sequence'}
+            {props.isSending ? 'Sending...' : 'Send Campaign'}
           </Button>
 
           <Button
             variant="secondary"
             disabled={props.isSending}
             onClick={props.handleSaveDraft}
-            className="h-12 px-10 rounded-full font-bold text-[10px] uppercase tracking-widest"
           >
-            Save as Draft
+            Save Draft
           </Button>
 
           <Button
             variant="ghost"
             onClick={() => props.setShowScheduler(!props.showScheduler)}
-            className="text-[10px] font-bold uppercase tracking-widest rounded-full"
             leftIcon={<Calendar className="w-4 h-4" />}
           >
-            {props.showScheduler ? "Hide Queue" : "Delay Execution"}
+            {props.showScheduler ? "Hide Schedule" : "Schedule"}
           </Button>
 
           {props.showScheduler && (
@@ -869,7 +867,7 @@ export const Composer: React.FC<ComposerProps> = (props) => {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 pt-2">
+        <div className="flex flex-col gap-2 pt-2">
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer group">
               <input
@@ -879,21 +877,21 @@ export const Composer: React.FC<ComposerProps> = (props) => {
                 onChange={toggleMarketingMode}
                 aria-label="Toggle marketing mode"
               />
-              <div className="w-10 h-5 bg-white/5 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white/40 after:border-white/10 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500/50 peer-checked:after:bg-white"></div>
-              <span className="ml-3 text-[10px] font-bold uppercase tracking-widest text-text-secondary group-hover:text-white transition-colors">
-                {props.isMarketing ? "Newsletter / Marketing Mode" : "Cold Outreach / Personal Mode"}
+              <div className="w-9 h-5 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white/30"></div>
+              <span className="ml-2.5 text-xs font-semibold text-text-secondary group-hover:text-white transition-colors">
+                {props.isMarketing ? "Newsletter / Marketing Mode" : "Personal / Outreach Mode"}
               </span>
             </label>
           </div>
-          <p className="text-[9px] text-text-secondary/40 font-medium italic">
+          <p className="text-xs text-text-secondary/60 font-medium italic">
             {props.isMarketing
-              ? "(Includes tracking pixels & unsubscribe footer)"
-              : "(Removes all marketing footprint for maximum deliverability)"}
+              ? "(Includes tracking pixels & unsubscribe link)"
+              : "(Optimized for direct delivery without tracking headers)"}
           </p>
         </div>
 
         {/* Keyboard shortcuts hint */}
-        <div className="text-[8px] text-text-secondary/30 text-center pt-4 border-t border-white/5">
+        <div className="text-[11px] text-text-secondary/50 text-center pt-3 border-t border-white/5">
           <span className="mr-3">⌘/Ctrl + Enter: Send</span>
           <span className="mr-3">⌘/Ctrl + Shift + S: Schedule</span>
           <span>Esc: Clear form</span>

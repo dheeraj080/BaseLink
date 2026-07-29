@@ -1,53 +1,130 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   
-  /* Monochrome Dark Mode Design System */
+  /* Monochrome Dark Mode Apple Design System */
   --color-bg-primary: #000000;
   --color-surface-primary: #121212;
   --color-surface-secondary: #1e1e1e;
-  --color-text-main: #e5e5e5;
-  --color-text-secondary: #a3a3a3;
-  --color-border-color: #333333;
+  --color-text-main: #f5f5f7;
+  --color-text-secondary: #8e8e93;
+  --color-border-color: rgba(255, 255, 255, 0.12);
   --color-white: #ffffff;
   
-  /* Aliasing for stability */
-  --color-onyx: var(--color-bg-primary);
-  --color-onyx-100: var(--color-surface-primary);
-  --color-onyx-400: var(--color-border-color);
-  --color-soft-linen: var(--color-text-main);
-  --color-silver: var(--color-text-secondary);
-  --color-primary: var(--color-white);
-  --color-primary-500: var(--color-text-main);
+  /* Aliases */
+  --color-onyx: #000000;
+  --color-onyx-100: #121212;
+  --color-onyx-400: rgba(255, 255, 255, 0.15);
+  --color-soft-linen: #f5f5f7;
+  --color-silver: #8e8e93;
+  --color-primary: #ffffff;
+  --color-primary-500: #f5f5f7;
 }
 
-@layer base {
-  :root {
-    --bg-primary: #000000;
-    --surface-primary: #121212;
-    --surface-secondary: #1e1e1e;
-    --text-main: #e5e5e5;
-    --text-secondary: #a3a3a3;
-    --border-color: #333333;
-    --accent: #ffffff;
-  }
-  
-  * {
-    @apply border-border-color;
-  }
+:root {
+  --bg-primary: #000000;
+  --surface-primary: #121212;
+  --surface-secondary: #1e1e1e;
+  --text-main: #f5f5f7;
+  --text-secondary: #8e8e93;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --accent: #ffffff;
+}
 
-  body {
-    @apply font-sans bg-bg-primary text-text-main antialiased;
+* {
+  border-color: var(--color-border-color);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optical Typography Rules */
+h1, .text-display-lg {
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  font-weight: 700;
+}
+
+h2, h3, .text-display-sm {
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+p, span, label {
+  letter-spacing: -0.005em;
+}
+
+/* Apple Glass & Translucent Material System */
+.apple-glass {
+  background: rgba(18, 18, 18, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.apple-glass-card {
+  background: rgba(22, 22, 24, 0.8);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.apple-glass-bar {
+  background: rgba(10, 10, 12, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.apple-material-thick {
+  background: rgba(28, 28, 30, 0.88);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+/* Light catching top border highlight */
+.apple-edge-highlight {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+}
+
+.glass-card {
+  background: rgba(22, 22, 24, 0.8);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Reduced Motion & Transparency Accessibility Overrides */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-@layer utilities {
-  .glass-card {
-    @apply bg-surface-primary backdrop-blur-md border border-border-color shadow-xl;
-  }
-  
-  .text-balance {
-    text-wrap: balance;
+@media (prefers-reduced-transparency: reduce) {
+  .apple-glass, .apple-glass-card, .apple-glass-bar, .apple-material-thick, .glass-card {
+    background: #121212 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
+
+

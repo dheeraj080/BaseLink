@@ -12,60 +12,58 @@ interface DraftsTableProps {
 
 export function DraftsTable({ drafts, onEdit, onDelete }: DraftsTableProps) {
   return (
-    <div className="bg-surface-primary border border-border-color rounded-[32px] overflow-hidden shadow-2xl shadow-black/20">
+    <div className="apple-glass-card rounded-[22px] overflow-hidden shadow-xl border border-white/10 apple-edge-highlight">
       <table className="w-full text-left border-collapse">
         <thead>
-          <tr className="bg-bg-primary/30 border-b border-border-color">
-            <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Recipients</th>
-            <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Subject</th>
-            <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary">Last Modified</th>
-            <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary text-right">Actions</th>
+          <tr className="apple-glass-bar border-b border-white/10">
+            <th className="px-6 py-4 text-xs font-semibold text-text-secondary tracking-tight">Recipients</th>
+            <th className="px-6 py-4 text-xs font-semibold text-text-secondary tracking-tight">Subject</th>
+            <th className="px-6 py-4 text-xs font-semibold text-text-secondary tracking-tight">Last Modified</th>
+            <th className="px-6 py-4 text-xs font-semibold text-text-secondary tracking-tight text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border-color">
+        <tbody className="divide-y divide-white/5">
           {drafts.length === 0 ? (
             <tr>
-              <td colSpan={4} className="px-10 py-24 text-center text-text-secondary/20 bg-bg-primary/50">
-                <FileText className="w-12 h-12 mx-auto mb-6 opacity-5" />
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em]">No drafts stored</p>
+              <td colSpan={4} className="px-6 py-16 text-center text-text-secondary">
+                <FileText className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-xs font-semibold">No drafts stored</p>
               </td>
             </tr>
           ) : (
             drafts.map((draft) => (
-              <tr key={draft.id} className="hover:bg-white/[0.02] transition-colors group cursor-default">
-                <td className="px-10 py-6">
+              <tr key={draft.id} className="hover:bg-white/5 transition-all duration-150 group cursor-default">
+                <td className="px-6 py-4">
                   <span className="text-sm font-bold text-white tracking-tight">
                     {draft.to.length > 0 ? draft.to.join(', ') : '(No recipients)'}
                   </span>
                 </td>
-                <td className="px-10 py-6">
-                  <span className="text-[11px] font-bold text-text-secondary/60 uppercase tracking-widest truncate max-w-[200px] inline-block">
+                <td className="px-6 py-4">
+                  <span className="text-xs font-medium text-text-secondary truncate max-w-[240px] inline-block">
                     {draft.subject || '(No subject)'}
                   </span>
                 </td>
-                <td className="px-10 py-6">
-                  <span className="text-[10px] font-bold text-text-secondary/40 uppercase tracking-widest">
+                <td className="px-6 py-4">
+                  <span className="text-xs font-semibold text-text-secondary/70">
                     {format(new Date(draft.updatedAt), 'MMM dd, HH:mm')}
                   </span>
                 </td>
-                <td className="px-10 py-6 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-1.5">
+                    <button
                       onClick={() => onEdit(draft)}
-                      className="h-8 w-8 p-0 rounded-full hover:bg-white/10"
+                      className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 cursor-pointer"
+                      title="Edit Draft"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
                       onClick={() => onDelete(draft.id)}
-                      className="h-8 w-8 p-0 rounded-full hover:bg-red-500/10"
+                      className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-all active:scale-95 cursor-pointer"
+                      title="Delete Draft"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                    </Button>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </td>
               </tr>

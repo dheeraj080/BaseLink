@@ -9,26 +9,29 @@ interface RecentBroadcastsProps {
 
 export function RecentBroadcasts({ logs }: RecentBroadcastsProps) {
   return (
-    <div className="bg-surface-primary border border-border-color rounded-[32px] p-8 shadow-2xl flex flex-col">
-      <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-text-secondary mb-8">Recent Broadcasts</h3>
-      <div className="space-y-6 flex-1 overflow-y-auto max-h-[350px] pr-2">
+    <div className="apple-glass-card rounded-[24px] p-6 sm:p-8 border border-white/10 shadow-xl flex flex-col apple-edge-highlight">
+      <h3 className="text-[11px] font-semibold uppercase tracking-widest text-text-secondary mb-6">Recent Broadcasts</h3>
+      <div className="space-y-3 flex-1 overflow-y-auto max-h-[350px] pr-1">
         {logs.length === 0 ? (
-          <p className="text-[10px] font-bold text-text-secondary/40 uppercase tracking-widest text-center py-12">No recent dispatches</p>
+          <p className="text-xs font-semibold text-text-secondary/60 text-center py-12 italic">No recent dispatches</p>
         ) : (
           logs.map((log) => (
-            <div key={log.id} className="flex gap-4 items-center bg-white/[0.01] border border-white/5 p-4 rounded-2xl hover:bg-white/[0.03] transition-colors">
-              <div className="w-10 h-10 rounded-xl bg-bg-primary border border-border-color flex items-center justify-center shrink-0">
-                <Mail className="w-4 h-4 text-text-secondary" />
+            <div
+              key={log.id}
+              className="flex gap-3.5 items-center apple-glass p-3.5 rounded-xl hover:bg-white/10 transition-all duration-150 active:scale-[0.98] cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 text-white/80" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-text-main truncate">{log.recipient}</p>
-                <p className="text-[10px] text-text-secondary/60 truncate mt-1">{log.subject}</p>
+                <p className="text-xs font-bold text-white truncate tracking-tight">{log.recipient}</p>
+                <p className="text-[11px] text-text-secondary truncate mt-0.5">{log.subject}</p>
               </div>
               <div className={cn(
-                "text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border",
-                log.status === 'SENT' ? "bg-white/5 text-white border-white/10" : "bg-red-500/10 text-red-500 border-red-500/20"
+                "text-[10px] font-semibold px-2.5 py-0.5 rounded-full tracking-tight border",
+                log.status === 'SENT' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
               )}>
-                {log.status === 'SENT' ? 'SENT' : log.status}
+                {log.status === 'SENT' ? 'Sent' : log.status}
               </div>
             </div>
           ))

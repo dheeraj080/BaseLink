@@ -30,49 +30,49 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { logout, user } = useAuth();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    const mount = async () => {
-      setMounted(true);
-    };
-    mount();
-  }, []);
+  const [mounted] = React.useState(() => typeof window !== 'undefined');
 
   return (
-    <aside className="w-64 bg-surface-primary border-r border-border-color h-screen sticky top-0 flex flex-col">
-      <div className="p-8">
-        <Link href="/" className="flex items-center gap-4 group">
-          <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center font-black text-bg-primary shadow-2xl transition-all group-hover:scale-105">
+    <aside className="w-64 apple-glass border-r border-white/10 h-screen sticky top-0 flex flex-col z-30 select-none">
+      <div className="p-6 pb-2">
+        <Link href="/" className="flex items-center gap-3.5 group">
+          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center font-bold text-black shadow-lg shadow-white/10 transition-transform duration-200 group-hover:scale-105 active:scale-95 apple-edge-highlight">
             B
           </div>
           <div className="flex flex-col">
-            <span className="text-white font-black text-xl tracking-tighter leading-none">BaseLink</span>
+            <span className="text-white font-bold text-lg tracking-tight">BaseLink</span>
           </div>
         </Link>
       </div>
 
-      <nav className="flex-1 px-6 py-10 space-y-12">
-        <div className="space-y-4">
-          <ul className="space-y-2">
+      <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+        <div className="space-y-1">
+          <ul className="space-y-1.5">
             {navItems.map((item) => {
               const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
               return (
-                <li key={item.name}>
+                <li key={item.name} className="relative">
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-300 group text-sm font-bold tracking-tight",
+                      "relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl transition-all duration-150 text-sm font-semibold tracking-tight active:scale-[0.97] cursor-pointer z-10",
                       isActive
-                        ? "bg-white text-bg-primary shadow-2xl shadow-white/5"
+                        ? "text-black"
                         : "text-text-secondary hover:text-white hover:bg-white/5"
                     )}
                   >
+                    {isActive && (
+                      <motion.div
+                        layoutId="sidebarActivePill"
+                        className="absolute inset-0 bg-white rounded-xl shadow-md z-[-1]"
+                        transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+                      />
+                    )}
                     <item.icon className={cn(
-                      "w-5 h-5",
-                      isActive ? "text-bg-primary" : "text-text-secondary/40 group-hover:text-white"
+                      "w-4 h-4 transition-colors",
+                      isActive ? "text-black" : "text-text-secondary/60 group-hover:text-white"
                     )} />
-                    {item.name}
+                    <span>{item.name}</span>
                   </Link>
                 </li>
               );
@@ -81,36 +81,42 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="px-6 py-6 border-t border-border-color space-y-2">
+      <div className="px-4 py-4 border-t border-white/10 space-y-1">
         <Link
           href="/settings"
-          className="flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold tracking-tight text-text-secondary hover:text-white hover:bg-white/5 transition-all"
+          className={cn(
+            "flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold tracking-tight transition-all duration-150 active:scale-[0.97]",
+            pathname.startsWith('/settings')
+              ? "bg-white/10 text-white"
+              : "text-text-secondary hover:text-white hover:bg-white/5"
+          )}
         >
-          <Settings className="w-5 h-5 opacity-40 group-hover:opacity-100" />
-          Settings
+          <Settings className="w-4 h-4 opacity-60" />
+          <span>Settings</span>
         </Link>
         <button
           onClick={() => logout()}
-          className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-sm font-bold tracking-tight text-text-secondary hover:text-white hover:bg-white/5 transition-all"
+          className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold tracking-tight text-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 active:scale-[0.97] cursor-pointer"
         >
-          <LogOut className="w-5 h-5 opacity-40 group-hover:opacity-100" />
-          Logout
+          <LogOut className="w-4 h-4 opacity-60" />
+          <span>Logout</span>
         </button>
       </div>
 
-      <div className="p-8 border-t border-border-color bg-surface-primary/30">
-        <div className="flex items-center gap-4">
+      <div className="p-4 border-t border-white/10 apple-glass-bar">
+        <div className="flex items-center gap-3">
           {mounted && user?.image ? (
-            <div className="relative w-10 h-10 rounded-2xl overflow-hidden border border-border-color shadow-xl">
-              <Image src={user.image} alt={user.name || 'User'} fill className="object-cover grayscale hover:grayscale-0 transition-all duration-700" referrerPolicy="no-referrer" />
+            <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/15 shadow-md">
+              <Image src={user.image} alt={user.name || 'User'} fill className="object-cover" referrerPolicy="no-referrer" />
             </div>
           ) : (
-            <div className="w-10 h-10 rounded-2xl bg-bg-primary flex items-center justify-center border border-border-color">
-              <UserCircle className="w-6 h-6 text-text-secondary/30" />
+            <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/15">
+              <UserCircle className="w-5 h-5 text-white/40" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-white truncate tracking-tight">{mounted ? (user?.name || 'ROOT_USER') : '...'}</p>
+            <p className="text-xs font-bold text-white truncate tracking-tight">{mounted ? (user?.name || 'Demo User') : '...'}</p>
+            <p className="text-[11px] font-medium text-text-secondary truncate">{mounted ? (user?.email || 'admin@baselink.io') : ''}</p>
           </div>
         </div>
       </div>
