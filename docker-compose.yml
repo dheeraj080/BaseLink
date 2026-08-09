@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   email-db:
-    image: postgres:latest
+    image: postgres:16-alpine
     container_name: email-db
     environment:
       POSTGRES_DB: email_db
